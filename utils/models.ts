@@ -1,6 +1,9 @@
 export const STATUSES = ['want', 'progress', 'completed', 'rereading', 'onhold', 'dnf', 'lost'] as const;
 export type Status = (typeof STATUSES)[number];
 
+// 'lost' is set by the deleted-work check, not picked by hand.
+export const PICKABLE_STATUSES = STATUSES.filter((s) => s !== 'lost');
+
 export const STATUS_LABELS: Record<Status, string> = {
   want: 'For Later',
   progress: 'Reading',

@@ -90,6 +90,17 @@ function Dashboard() {
   }
 
   const [modal, setModal] = createSignal<ModalState>(null);
+  // dashboard.html#work=<id> (from the toolbar menu) opens that work once the library has
+  // loaded; the modal closes itself for a work that isn't there. The hash is then dropped
+  // so a reload doesn't reopen it.
+  const linked = location.hash.match(/^#work=(\d+)$/)?.[1];
+  history.replaceState(null, '', location.pathname);
+  let linkOpened = false;
+  createEffect(() => {
+    if (!linked || linkOpened || !works()) return;
+    linkOpened = true;
+    setModal({ kind: 'edit', id: linked });
+  });
 
   return (
     <div class="mx-auto grid max-w-[1600px] gap-4 p-4 [grid-template-areas:'header'_'filters'_'main'] md:grid-cols-[220px_minmax(0,1fr)] md:px-6 md:py-5 md:[grid-template-areas:'header_header'_'filters_main']">
@@ -147,6 +158,8 @@ function Dashboard() {
               onChange={(e) => lib.set({ fandom: e.currentTarget.value })}
             >
               <option value="">All fandoms</option>
+              {/* `selected` per option: the select's value is set before the library loads, when
+                  the saved option doesn't exist yet, so the browser would fall back to "All". */}
               <For each={lib.fandoms()}>
                 {([f, n]) => (
                   <option value={f} selected={f === lib.filters().fandom}>
@@ -158,8 +171,6 @@ function Dashboard() {
           </label>
           <label class={fieldClass}>
             <span>Author</span>
-              {/* `selected` per option: the select's value is set before the library loads, when
-                  the saved option doesn't exist yet, so the browser would fall back to "All". */}
             <select
               class="text-sm text-text"
               value={lib.filters().author}

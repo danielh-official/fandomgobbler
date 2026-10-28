@@ -2,12 +2,9 @@ import { For, Show } from 'solid-js';
 import { removeAo3Work, saveAo3Work, type Ao3WorkInput } from '@/utils/library';
 import { Personal } from './Personal';
 import { isOngoing } from '@/utils/library-view';
-import { STATUS_LABELS, STATUSES, type Ao3Work, type Status } from '@/utils/models';
+import { PICKABLE_STATUSES, STATUS_LABELS, type Ao3Work, type Status } from '@/utils/models';
 import { formatDate, relativeDay, relativeTime } from '@/utils/time';
 import { card, chip, sectionHeading } from './ui';
-
-// 'lost' is set by the availability checker, not picked by hand.
-const PICKABLE = STATUSES.filter((s) => s !== 'lost');
 
 const num = (n: number | null | undefined) => (n == null ? null : n.toLocaleString());
 // AO3 dates are calendar days, so their relative part is in days, not hours.
@@ -96,7 +93,7 @@ export function WorkView(props: { work: Ao3WorkInput; tracked?: Ao3Work }) {
       <div>
         <h2 class={sectionHeading}>Status</h2>
         <div class="flex flex-wrap gap-1.5">
-          <For each={PICKABLE}>
+          <For each={PICKABLE_STATUSES}>
             {(s) => (
               <button class={chip} aria-pressed={status() === s} onClick={() => pickStatus(s)}>
                 {STATUS_LABELS[s]}

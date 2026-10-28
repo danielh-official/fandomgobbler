@@ -16,3 +16,9 @@ export async function fetchAo3Work(id: string): Promise<Ao3WorkInput> {
 export async function refreshIfTracked(work: Ao3WorkInput): Promise<void> {
   if (await getAo3Work(work.id)) await saveAo3Work(work);
 }
+
+// A work from page HTML already in hand (an open tab); falls back to one fetch when the
+// page has no work on it, e.g. AO3's adult-content warning.
+export async function parseOrFetchAo3Work(html: unknown, id: string): Promise<Ao3WorkInput> {
+  return (typeof html === 'string' && parseAo3Work(html, id)) || fetchAo3Work(id);
+}

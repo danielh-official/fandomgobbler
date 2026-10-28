@@ -10,7 +10,9 @@ export default defineConfig({
     description: 'Local-first fanfiction library tracker (personal fork).',
     // unlimitedStorage keeps the IndexedDB library from being evicted under storage pressure.
     // scripting + AO3 host access let the side panel read the open AO3 tab and fetch works.
-    permissions: ['unlimitedStorage', 'scripting'],
+    // contextMenus: right-click "Add to library" on work pages. offscreen: a hidden page that
+    // parses AO3 HTML for the background script, which has no DOMParser.
+    permissions: ['unlimitedStorage', 'scripting', 'contextMenus', 'offscreen'],
     host_permissions: ['https://archiveofourown.org/*'],
     action: {},
   },

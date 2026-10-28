@@ -6,27 +6,13 @@ import { browser } from 'wxt/browser';
 import { ThemePicker } from '@/components/ThemePicker';
 import { card, linkButton } from '@/components/ui';
 import { WorkView } from '@/components/WorkView';
-import { ao3WorkId, parseAo3Work } from '@/utils/ao3';
+import { ao3WorkId } from '@/utils/ao3';
 import { fetchAo3Work, refreshIfTracked } from '@/utils/ao3-fetch';
 import { db } from '@/utils/db';
 import type { Ao3WorkInput } from '@/utils/library';
 import { applySavedTheme } from '@/utils/theme';
+import { readTabWork } from '@/utils/ao3-tab';
 import { LibraryView } from './LibraryView';
-
-// The work in the active tab, read from the page itself so it costs AO3 nothing. Falls
-// back to one fetch when the tab is on the adult-content warning. Viewing a tracked work
-// refreshes its stored metadata; status and personal fields are kept.
-async function readTabWork(tab: { url: string; id: number }): Promise<Ao3WorkInput | null> {
-  const id = ao3WorkId(tab.url);
-  if (!id) return null;
-  const [frame] = await browser.scripting.executeScript({
-    target: { tabId: tab.id },
-    func: () => document.documentElement.outerHTML,
-  });
-  const work = (typeof frame?.result === 'string' && parseAo3Work(frame.result, id)) || (await fetchAo3Work(id));
-  await refreshIfTracked(work);
-  return work;
-}
 
 // One fetch for a URL the user pasted.
 async function readUrlWork(url: string): Promise<Ao3WorkInput> {
