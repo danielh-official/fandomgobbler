@@ -6,7 +6,7 @@ export function ChapterLink(props: { work: Ao3Work; class?: string }) {
   const n = () => Math.max(1, props.work.furthestChapter?.num ?? 1);
   return (
     <a
-      class={`chapter-link ${props.class ?? ''}`}
+      class={`font-semibold whitespace-nowrap no-underline hover:underline ${props.class ?? ''}`}
       href={ao3ChapterUrl(props.work)}
       target="_blank"
       rel="noopener"

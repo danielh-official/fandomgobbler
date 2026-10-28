@@ -1,0 +1,6 @@
+.old/
+.output/
+.wxt/
+pnpm-lock.yaml
+# Saved/hand-written AO3 markup; kept as the parser sees it.
+utils/fixtures/

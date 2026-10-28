@@ -1,0 +1,79 @@
+@import 'tailwindcss';
+
+/* Design tokens shared by every extension page, exposed as Tailwind colours
+   (bg-surface, text-muted, border-border, bg-accent, ...). */
+@theme {
+  --color-bg: #f7f6f2;
+  --color-surface: #ffffff;
+  --color-text: #1f2328;
+  --color-muted: #656a72;
+  --color-border: #e2e0da;
+  --color-accent: #2f6f3e;
+  --color-accent-soft: #e4eee6;
+  --color-on-accent: #ffffff;
+  --color-danger: #b42318;
+  --color-star: #d4a017;
+  --font-sans: system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+/* Element defaults. Utilities override these, so one-off buttons only add what differs. */
+@layer base {
+  *,
+  ::before,
+  ::after,
+  ::backdrop {
+    border-color: var(--color-border);
+  }
+
+  body {
+    background: var(--color-bg);
+    color: var(--color-text);
+    font-size: 14px;
+    line-height: 1.45;
+  }
+
+  a {
+    color: var(--color-accent);
+  }
+
+  button {
+    cursor: pointer;
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+    border-radius: var(--radius-lg);
+    padding: 4px 10px;
+  }
+
+  button:hover {
+    border-color: var(--color-muted);
+  }
+
+  button:disabled {
+    cursor: default;
+    opacity: 0.6;
+  }
+
+  input:where([type='text'], [type='url'], [type='search'], [type='number']),
+  select,
+  textarea {
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    background-color: var(--color-surface);
+    padding: 5px 8px;
+    min-width: 0;
+  }
+
+  /* Own caret so it sits inside the padding instead of against the border. */
+  select {
+    appearance: none;
+    padding-right: 28px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23656a72' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 1px;
+  }
+}

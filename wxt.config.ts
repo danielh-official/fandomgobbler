@@ -1,8 +1,10 @@
+import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'wxt';
 
 export default defineConfig({
   modules: ['@wxt-dev/module-solid'],
   imports: false,
+  vite: () => ({ plugins: [tailwindcss()] }),
   manifest: {
     name: 'FandomGobbler (Fork)',
     description: 'Local-first fanfiction library tracker (personal fork).',

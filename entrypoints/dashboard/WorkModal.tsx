@@ -24,13 +24,18 @@ export function WorkModal(props: { state: ModalState; library: Ao3Work[]; onClos
   return (
     <dialog
       ref={dialog}
-      class="modal"
-      onClose={props.onClose}
+      // m-auto restores the native centring that Tailwind's reset removes. Full screen on phones.
+      class="m-auto max-h-[calc(100%-32px)] w-[min(560px,calc(100%-32px))] overscroll-contain rounded-xl bg-bg p-0 text-text shadow-[0_16px_48px_rgb(0_0_0/0.2)] backdrop:bg-black/35 max-md:m-0 max-md:h-full max-md:max-h-none max-md:w-full max-md:max-w-none max-md:rounded-none"
+      onClose={() => props.onClose()}
       // A click on the dialog element itself (not its content) is a click on the backdrop.
       onClick={(e) => e.target === dialog && dialog.close()}
     >
-      <div class="modal-body">
-        <button class="modal-close" onClick={() => dialog.close()} aria-label="Close">
+      <div class="relative grid gap-3 px-4 pt-11 pb-4">
+        <button
+          class="absolute top-2 right-2.5 border-0 bg-transparent px-2 py-1 text-lg"
+          onClick={() => dialog.close()}
+          aria-label="Close"
+        >
           ✕
         </button>
         <Show when={props.state?.kind === 'add'}>
@@ -54,31 +59,31 @@ function AddWork(props: { library: Ao3Work[] }) {
   });
 
   return (
-    <div class="add-work">
-      <h2 class="modal-title">Add a work</h2>
+    <div class="grid gap-3">
+      <h2 class="text-base font-bold">Add a work</h2>
       <form
-        class="url-form"
+        class="flex gap-1.5"
         onSubmit={(e) => {
           e.preventDefault();
           const input = e.currentTarget.elements.namedItem('url') as HTMLInputElement;
           setUrl(input.value.trim());
         }}
       >
-        <input name="url" type="url" required autofocus placeholder="Paste an AO3 work URL" />
+        <input class="flex-1" name="url" type="url" required autofocus placeholder="Paste an AO3 work URL" />
         <button disabled={work.loading}>Look up</button>
       </form>
       <Switch>
         <Match when={work.loading}>
-          <p class="muted">Loading from AO3…</p>
+          <p class="text-muted">Loading from AO3…</p>
         </Match>
         <Match when={work.error}>
-          <p class="error">{(work.error as Error).message}</p>
+          <p class="text-danger">{(work.error as Error).message}</p>
         </Match>
         <Match when={work()}>
           {(w) => (
             <>
               <Show when={!props.library.some((t) => t.id === w().id)}>
-                <p class="muted small">Pick a status to add it to your library.</p>
+                <p class="text-xs text-muted">Pick a status to add it to your library.</p>
               </Show>
               <WorkView work={w()} tracked={props.library.find((t) => t.id === w().id)} />
             </>

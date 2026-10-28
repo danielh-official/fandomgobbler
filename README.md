@@ -12,5 +12,8 @@ To use it, build it locally and load it unpacked in Chrome with Developer Mode e
 After pulling changes, run `pnpm build` again and click the reload icon on the
 extension's card. `pnpm dev` starts a development browser with hot reload instead.
 
+Before committing, run `pnpm check` (formatting, lint, typecheck and tests); CI runs the
+same checks. `pnpm format` fixes formatting.
+
 Licensed under the GNU General Public License v3.0, the same as the original. See
 `LICENSE`.

@@ -5,11 +5,16 @@
   "version": "0.1.0",
   "type": "module",
   "license": "GPL-3.0-only",
+  "packageManager": "pnpm@12.3.4",
   "scripts": {
     "dev": "wxt",
     "build": "wxt build",
     "compile": "tsc --noEmit",
     "test": "vitest run",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "check": "pnpm format:check && pnpm lint && pnpm compile && pnpm test",
     "postinstall": "wxt prepare"
   },
   "dependencies": {
@@ -17,10 +22,19 @@
     "solid-js": "^1.9.17"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@tailwindcss/vite": "^4.3.3",
     "@wxt-dev/module-solid": "^1.1.4",
+    "eslint": "^10.13.0",
+    "eslint-plugin-solid": "^0.18.1",
     "fake-indexeddb": "^6.2.6",
+    "globals": "^17.13.0",
     "happy-dom": "^21.0.4",
-    "typescript": "^7.0.2",
+    "prettier": "^3.9.10",
+    "prettier-plugin-tailwindcss": "^0.8.1",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.72.1",
     "vitest": "^5.0.5",
     "wxt": "^0.21.5"
   }

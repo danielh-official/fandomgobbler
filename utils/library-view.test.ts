@@ -1,5 +1,14 @@
 import { expect, test } from 'vitest';
-import { authorsOf, inStatus, isOngoing, statusCounts, unreadChapters, valueCounts, viewLibrary, type LibraryFilter } from './library-view';
+import {
+  authorsOf,
+  inStatus,
+  isOngoing,
+  statusCounts,
+  unreadChapters,
+  valueCounts,
+  viewLibrary,
+  type LibraryFilter,
+} from './library-view';
 import type { Ao3Work } from './models';
 
 const work = (id: string, extra: Partial<Ao3Work> = {}): Ao3Work => ({
@@ -28,7 +37,11 @@ test('filters by status and query', () => {
 });
 
 test('statusCounts', () => {
-  expect(statusCounts([work('1'), work('2'), work('3', { status: 'dnf' })])).toMatchObject({ want: 2, dnf: 1, progress: 0 });
+  expect(statusCounts([work('1'), work('2'), work('3', { status: 'dnf' })])).toMatchObject({
+    want: 2,
+    dnf: 1,
+    progress: 0,
+  });
 });
 
 test('unread chapters and ongoing', () => {
@@ -44,15 +57,21 @@ test('unread chapters and ongoing', () => {
 test('fandom filter and counts', () => {
   const works = [work('1', { fandoms: ['B', 'A'] }), work('2', { fandoms: ['A'] }), work('3')];
   expect(ids(viewLibrary(works, { ...all, fandom: 'A' }))).toEqual(['2', '1']);
-  expect(valueCounts(works, (w) => w.fandoms ?? [])).toEqual([['A', 2], ['B', 1]]);
+  expect(valueCounts(works, (w) => w.fandoms ?? [])).toEqual([
+    ['A', 2],
+    ['B', 1],
+  ]);
 });
 
 test('author filter splits co-authors', () => {
   const works = [work('1', { author: 'one, two' }), work('2', { author: 'two' }), work('3', { author: 'three' })];
   expect(ids(viewLibrary(works, { ...all, author: 'two' }))).toEqual(['2', '1']);
-  expect(valueCounts(works, authorsOf)).toEqual([['two', 2], ['one', 1], ['three', 1]]);
+  expect(valueCounts(works, authorsOf)).toEqual([
+    ['two', 2],
+    ['one', 1],
+    ['three', 1],
+  ]);
 });
-
 
 test('inStatus', () => {
   const works = [work('1'), work('2', { status: 'dnf' })];

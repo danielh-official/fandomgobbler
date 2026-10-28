@@ -41,9 +41,7 @@ export function parseAo3Work(html: string, id: string): Ao3WorkInput | null {
 
   // The work summary, not a chapter summary: chapter pages have both.
   const summaryEl = doc.querySelector('#workskin > .preface .summary blockquote.userstuff');
-  const summary = summaryEl
-    ? [...summaryEl.children].map(text).filter(Boolean).join('\n\n') || text(summaryEl)
-    : '';
+  const summary = summaryEl ? [...summaryEl.children].map(text).filter(Boolean).join('\n\n') || text(summaryEl) : '';
 
   const series = doc.querySelector('dd.series span.position');
   const seriesLink = series?.querySelector('a[href*="/series/"]');
@@ -62,8 +60,8 @@ export function parseAo3Work(html: string, id: string): Ao3WorkInput | null {
   const completedAt = isCompleteLabel ? statusDate : null;
 
   // Subscribe form only exists when logged in. Its action ends in an id once subscribed.
-  const subscribeForm = [...doc.querySelectorAll('form[action*="/subscriptions"]')].find(
-    (f) => f.querySelector(`input[name="subscription[subscribable_id]"][value="${id}"]`),
+  const subscribeForm = [...doc.querySelectorAll('form[action*="/subscriptions"]')].find((f) =>
+    f.querySelector(`input[name="subscription[subscribable_id]"][value="${id}"]`),
   );
 
   return {
@@ -77,7 +75,10 @@ export function parseAo3Work(html: string, id: string): Ao3WorkInput | null {
     relationship: text(doc.querySelector('dd.relationship a.tag')),
     seriesTitle: text(seriesLink),
     seriesUrl: absolute(seriesLink?.getAttribute('href')),
-    seriesPosition: text(series).replace(text(seriesLink), '').replace(/\s*of\s*$/, '').trim(),
+    seriesPosition: text(series)
+      .replace(text(seriesLink), '')
+      .replace(/\s*of\s*$/, '')
+      .trim(),
     wordCount: count(stat('words')),
     chaptersPosted,
     chaptersTotal,
@@ -90,9 +91,7 @@ export function parseAo3Work(html: string, id: string): Ao3WorkInput | null {
     completedAt,
     // One-shots never get a "Completed:" date; treat publishing as completing.
     inferredCompletedAt: !completedAt && isComplete ? (statusDate ?? publishedAt) : null,
-    subscribedAtAo3: subscribeForm
-      ? /\/subscriptions\/\d+/.test(subscribeForm.getAttribute('action') ?? '')
-      : null,
+    subscribedAtAo3: subscribeForm ? /\/subscriptions\/\d+/.test(subscribeForm.getAttribute('action') ?? '') : null,
   };
 }
 

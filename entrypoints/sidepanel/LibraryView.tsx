@@ -13,6 +13,7 @@ import {
 import { STATUS_LABELS, STATUSES, type Ao3Work } from '@/utils/models';
 import { formatDate, relativeDay } from '@/utils/time';
 import { ChapterLink } from '@/components/ChapterLink';
+import { linkButton, sectionHeading } from '@/components/ui';
 
 const PREFS_KEY = 'fg-library-prefs';
 
@@ -26,7 +27,9 @@ function loadPrefs(): Prefs {
     if (STATUSES.includes(saved.status)) prefs.status = saved.status;
     if (typeof saved.fandom === 'string') prefs.fandom = saved.fandom;
     if (typeof saved.author === 'string') prefs.author = saved.author;
-  } catch {}
+  } catch {
+    // Storage can be unavailable; remembered filters are only a convenience.
+  }
   return prefs;
 }
 
@@ -40,7 +43,9 @@ export function LibraryView(props: { works: Ao3Work[]; onOpen: (w: Ao3Work) => v
     const next: Prefs = { status: status(), fandom: fandom(), author: author() };
     try {
       localStorage.setItem(PREFS_KEY, JSON.stringify(next));
-    } catch {}
+    } catch {
+      // Storage can be unavailable; remembered filters are only a convenience.
+    }
   });
 
   const counts = () => statusCounts(props.works);
@@ -63,7 +68,7 @@ export function LibraryView(props: { works: Ao3Work[]; onOpen: (w: Ao3Work) => v
     });
 
   return (
-    <div class="library-view">
+    <div class="grid gap-2">
       <input
         type="text"
         placeholder="Search title, author, fandom, notes"
@@ -72,8 +77,8 @@ export function LibraryView(props: { works: Ao3Work[]; onOpen: (w: Ao3Work) => v
       />
 
       <section>
-        <h2 class="section-heading">Filters</h2>
-        <div class="filters">
+        <h2 class={sectionHeading}>Filters</h2>
+        <div class="grid grid-cols-2 gap-1.5">
           <select
             value={status()}
             onChange={(e) => setStatus(e.currentTarget.value as LibraryFilter['status'])}
@@ -90,28 +95,42 @@ export function LibraryView(props: { works: Ao3Work[]; onOpen: (w: Ao3Work) => v
           </select>
           <select value={fandom()} onChange={(e) => setFandom(e.currentTarget.value)} aria-label="Fandom">
             <option value="">All fandoms</option>
-            <For each={fandoms()}>{([f, n]) => <option value={f}>{f} ({n})</option>}</For>
+            <For each={fandoms()}>
+              {([f, n]) => (
+                <option value={f}>
+                  {f} ({n})
+                </option>
+              )}
+            </For>
           </select>
           <select value={author()} onChange={(e) => setAuthor(e.currentTarget.value)} aria-label="Author">
             <option value="">All authors</option>
-            <For each={authors()}>{([a, n]) => <option value={a}>{a} ({n})</option>}</For>
+            <For each={authors()}>
+              {([a, n]) => (
+                <option value={a}>
+                  {a} ({n})
+                </option>
+              )}
+            </For>
           </select>
         </div>
       </section>
 
       <Show when={query() || status() !== 'all' || fandom() || author()}>
-        <p class="muted small">
+        <p class="text-xs text-muted">
           {shown().length} of {props.works.length} works
         </p>
       </Show>
 
-      <ul class="library">
-        <For each={shown()} fallback={<li class="muted">No works match.</li>}>
+      <ul class="grid gap-1.5">
+        <For each={shown()} fallback={<li class="text-muted">No works match.</li>}>
           {(w) => (
-            <li>
-              <button class="link" onClick={() => props.onOpen(w)}>{w.title}</button>
-              <div class="muted small">by {w.author}</div>
-              <div class="item-meta small">
+            <li class="rounded-lg border bg-surface px-2.5 py-2">
+              <button class={linkButton} onClick={() => props.onOpen(w)}>
+                {w.title}
+              </button>
+              <div class="text-xs text-muted">by {w.author}</div>
+              <div class="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs">
                 <span>{STATUS_LABELS[w.status]}</span>
                 <Show when={w.chaptersPosted != null}>
                   <span>
@@ -121,15 +140,16 @@ export function LibraryView(props: { works: Ao3Work[]; onOpen: (w: Ao3Work) => v
                 </Show>
                 <Show when={w.rating}>{(r) => <span>{'★'.repeat(r())}</span>}</Show>
               </div>
-              <div class="item-foot small">
+              {/* Last-updated text on the left, chapter link pinned bottom right. */}
+              <div class="mt-1 flex flex-wrap items-baseline gap-x-2.5 gap-y-1 text-xs">
                 <Show when={lastUpdated(w)}>
                   {(t) => (
-                    <span class="muted">
+                    <span class="text-muted">
                       Last updated: {formatDate(t())} ({relativeDay(t())})
                     </span>
                   )}
                 </Show>
-                <ChapterLink work={w} />
+                <ChapterLink work={w} class="ml-auto" />
               </div>
             </li>
           )}

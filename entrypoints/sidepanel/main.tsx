@@ -1,6 +1,4 @@
-import '@/assets/tokens.css';
-import '@/assets/components.css';
-import './style.css';
+import '@/assets/app.css';
 import { liveQuery } from 'dexie';
 import { createResource, createSignal, from, Match, onCleanup, Show, Switch } from 'solid-js';
 import { render } from 'solid-js/web';
@@ -11,6 +9,7 @@ import { db } from '@/utils/db';
 import { getAo3Work, type Ao3WorkInput } from '@/utils/library';
 import { LibraryView } from './LibraryView';
 import { WorkView } from '@/components/WorkView';
+import { card, linkButton } from '@/components/ui';
 
 // What the work view shows: the active tab, a pasted URL, or a work opened from the library.
 type Target = { url: string; tabId?: number; fromLibrary?: boolean };
@@ -47,6 +46,9 @@ async function loadWork(target: Target): Promise<Ao3WorkInput | null> {
   return work;
 }
 
+const tabClass =
+  '-mb-px rounded-none border-0 border-b-2 border-transparent bg-transparent px-3 py-1.5 text-muted aria-selected:border-accent aria-selected:font-semibold aria-selected:text-text';
+
 function App() {
   const [tab, setTab] = createSignal<'work' | 'library'>('work');
   const [target, setTarget] = createSignal<Target | null>(null);
@@ -76,44 +78,44 @@ function App() {
   }
 
   return (
-    <main class="panel">
-      <header class="panel-header">
-        <div class="panel-title">
-          <h1>FandomGobbler (Fork)</h1>
+    <main class="grid gap-3.5 p-4">
+      <header class="grid gap-2.5">
+        <div class="flex items-center justify-between gap-2">
+          <h1 class="text-[17px] font-bold">FandomGobbler (Fork)</h1>
           <button onClick={() => browser.tabs.create({ url: browser.runtime.getURL('/dashboard.html') })}>
             Dashboard ↗
           </button>
         </div>
-        <nav class="tabs" role="tablist">
-          <button role="tab" aria-selected={tab() === 'work'} onClick={() => setTab('work')}>Work</button>
-          <button role="tab" aria-selected={tab() === 'library'} onClick={() => setTab('library')}>
+        <nav class="flex border-b" role="tablist">
+          <button role="tab" class={tabClass} aria-selected={tab() === 'work'} onClick={() => setTab('work')}>
+            Work
+          </button>
+          <button role="tab" class={tabClass} aria-selected={tab() === 'library'} onClick={() => setTab('library')}>
             Library ({works()?.length ?? 0})
           </button>
         </nav>
       </header>
 
       <Show when={tab() === 'work'}>
-        <form class="url-form" onSubmit={submitUrl}>
-          <input name="url" type="url" required placeholder="Paste an AO3 work URL" />
+        <form class="flex gap-1.5" onSubmit={submitUrl}>
+          <input class="flex-1" name="url" type="url" required placeholder="Paste an AO3 work URL" />
           <button>Open</button>
         </form>
 
         <Show when={target()?.fromLibrary}>
-          <button class="link small" onClick={followTab}>← Back to current tab</button>
+          <button class={`${linkButton} text-xs`} onClick={followTab}>
+            ← Back to current tab
+          </button>
         </Show>
 
-        <Switch fallback={<p class="card muted">Open an AO3 work, or paste its URL above.</p>}>
+        <Switch fallback={<p class={`${card} text-muted`}>Open an AO3 work, or paste its URL above.</p>}>
           <Match when={work.loading}>
-            <p class="card muted">Loading…</p>
+            <p class={`${card} text-muted`}>Loading…</p>
           </Match>
           <Match when={work.error}>
-            <p class="card error">{(work.error as Error).message}</p>
+            <p class={`${card} text-danger`}>{(work.error as Error).message}</p>
           </Match>
-          <Match when={work()}>
-            {(w) => (
-              <WorkView work={w()} tracked={works()?.find((t) => t.id === w().id)} />
-            )}
-          </Match>
+          <Match when={work()}>{(w) => <WorkView work={w()} tracked={works()?.find((t) => t.id === w().id)} />}</Match>
         </Switch>
       </Show>
 

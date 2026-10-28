@@ -26,6 +26,13 @@ when a milestone changes state or a decision is made.
 - **Editions stay separate.** One library per platform (AO3, FF.net, ...). In Dexie that
   means one table per platform (e.g. `ao3Works`, `ffnetWorks`), not one table with a
   `platform` discriminator.
+- **Styling:** Tailwind CSS v4. Theme colours and element defaults live in
+  `assets/app.css`; reused class sets in `components/ui.ts`. No other stylesheets.
+- **Code standards:** Prettier (+ Tailwind class sorting) and ESLint (typescript-eslint,
+  eslint-plugin-solid). `pnpm check` runs format check, lint, typecheck and tests; GitHub
+  Actions runs the same on every push and PR. Run it before reporting a milestone done.
+- **TypeScript pinned to 6.0.** typescript-eslint doesn't support TypeScript 7 yet
+  (needs <6.1). Revisit when it does.
 - **Package manager:** pnpm. Explicit imports (`imports: false` in `wxt.config.ts`), not
   WXT auto-imports.
 - **No UI on AO3.** Nothing is injected into AO3 pages: no buttons, badges, sidebars,
@@ -54,24 +61,25 @@ Never start the next milestone without the go-ahead. Mark status below as work m
 
 Status: `todo` · `in progress` · `awaiting test` · `done` · `deferred` · `dropped`
 
-| # | Milestone | Status |
-|---|---|---|
-| 0 | Branch `wxt-rewrite`, upstream moved to `.old/`, this plan | done |
-| 1 | Scaffold | done |
-| 2 | Data layer + side panel shell | done |
-| 3 | AO3 work parser + side panel work view | done |
-| 4 | Side panel library + notes, rating, chapter progress | done |
-| 5 | Backup: export/import | deferred |
-| 6 | Side panel on AO3 listing pages | dropped |
-| 7 | Dashboard: library | done |
-| 7b | Intermission: Tailwind, Prettier, ESLint, GitHub Actions CI | in progress |
-| 8 | Dashboard: stats/charts | todo |
-| 9 | AO3 imports: bookmarks, Marked for Later (manual, rate-limited) | todo |
-| 10 | Deleted-work checker (manual, rate-limited) | todo |
-| 11 | Extension theme | todo |
-| 12 | FF.net edition | todo |
+| #   | Milestone                                                       | Status   |
+| --- | --------------------------------------------------------------- | -------- |
+| 0   | Branch `wxt-rewrite`, upstream moved to `.old/`, this plan      | done     |
+| 1   | Scaffold                                                        | done     |
+| 2   | Data layer + side panel shell                                   | done     |
+| 3   | AO3 work parser + side panel work view                          | done     |
+| 4   | Side panel library + notes, rating, chapter progress            | done     |
+| 5   | Backup: export/import                                           | deferred |
+| 6   | Side panel on AO3 listing pages                                 | dropped  |
+| 7   | Dashboard: library                                              | done     |
+| 7b  | Intermission: Tailwind, Prettier, ESLint, GitHub Actions CI     | done     |
+| 8   | Dashboard: stats/charts                                         | todo     |
+| 9   | AO3 imports: bookmarks, Marked for Later (manual, rate-limited) | todo     |
+| 10  | Deleted-work checker (manual, rate-limited)                     | todo     |
+| 11  | Extension theme                                                 | todo     |
+| 12  | FF.net edition                                                  | todo     |
 
 ### 1. Scaffold
+
 - WXT + Solid + TypeScript project at the repo root; package manager decided here.
 - Manifest from `wxt.config.ts`: name, version, icons (copied from `.old/icons`),
   minimal permissions (add more only when a milestone needs them).
@@ -82,6 +90,7 @@ Status: `todo` · `in progress` · `awaiting test` · `done` · `deferred` · `d
   AO3 page logs/shows the stub.
 
 ### 2. Data layer + side panel shell
+
 - Dexie schema: `ao3Works` (per-platform tables added with each edition).
 - Typed models for a tracked work (fields from `.old/docs/dev/storage-schema.md`
   and `.old/modules/tracked-works/core.js`).
@@ -93,6 +102,7 @@ Status: `todo` · `in progress` · `awaiting test` · `done` · `deferred` · `d
 - Change request: originally injected a pill on AO3 pages; replaced with the side panel.
 
 ### 3. AO3 work parser + side panel work view
+
 - Full work parser (reference `.old/modules/ao3-page/core.js`): fandoms, relationship,
   summary, series, stats, dates, chapters. Tests on saved HTML fixtures.
 - Work view in the side panel: status picker.
@@ -101,6 +111,7 @@ Status: `todo` · `in progress` · `awaiting test` · `done` · `deferred` · `d
   this was built). Replace or add real saved pages if the parser misreads something.
 
 ### 4. Side panel library + notes, rating, chapter progress
+
 - Library list with status filter, search, sort.
 - Notes and rating editing.
 - Chapter progress, **manual only**: the user sets their current chapter in the work view
@@ -109,6 +120,7 @@ Status: `todo` · `in progress` · `awaiting test` · `done` · `deferred` · `d
 - Open a library work in the panel's work view.
 
 ### 5. Backup: export/import (deferred)
+
 - Deferred by the user on 2026-10-28; not needed yet. Until it exists, the library lives
   only in this Chrome profile's IndexedDB: removing the extension deletes it.
 - JSON export/import of the new format.
@@ -117,6 +129,7 @@ Status: `todo` · `in progress` · `awaiting test` · `done` · `deferred` · `d
   path for existing data.
 
 ### 6. Side panel on AO3 listing pages (dropped)
+
 - Built, then dropped by the user on 2026-10-28: not needed, and a listing feature
   invites more AO3 scraping than is safe. The work is in git stash on `wxt-rewrite`
   ("!!GitHub_Desktop<wxt-rewrite>") if it's ever wanted.
@@ -125,12 +138,14 @@ Status: `todo` · `in progress` · `awaiting test` · `done` · `deferred` · `d
   quick track. Nothing is changed on the AO3 page itself.
 
 ### 7. Dashboard: library
+
 - Full-tab dashboard: browse, filter, sort, paginate, bulk actions, work detail.
 - **Responsive** from phone width to wide desktop: filters move from a sidebar to the top,
   rows collapse to cards, work detail is a drawer on wide screens and full-width on narrow.
 - Edition switcher waits for the FF.net edition (only AO3 exists).
 
 ### 7b. Intermission: tooling
+
 - Tailwind CSS (v4, Vite plugin). Existing hand-written CSS converted to utilities; design
   tokens become the Tailwind theme.
 - Prettier (with the Tailwind class-sorting plugin) and ESLint (typescript-eslint +
@@ -138,15 +153,18 @@ Status: `todo` · `in progress` · `awaiting test` · `done` · `deferred` · `d
 - GitHub Actions: format check, lint, typecheck, tests on push and PR.
 
 ### 8. Dashboard: stats/charts
+
 - Visual stats (reference `.old/modules/dashboard/charts-controller.js`),
   relationship insights.
 
 ### 9. AO3 imports
+
 - Bookmark import and Marked for Later import.
 - **Manual only:** started by a button click, never scheduled. Pages fetched one at a
   time with a delay between requests, progress shown, cancellable.
 
 ### 10. Deleted-work checker
+
 - Checks tracked works for deletion and marks them `lost` (keeping `lostFrom`).
 - **Manual only:** a button click starts it; rate-limited like M9, progress shown,
   cancellable. No alarms, no background schedule.
@@ -154,13 +172,16 @@ Status: `todo` · `in progress` · `awaiting test` · `done` · `deferred` · `d
 - Subscription refresh: undecided, not built unless the user asks.
 
 ### 11. Extension theme
+
 - Light/dark theme for side panel and dashboard via tokens.
 
 ### 12. FF.net edition
+
 - FF.net parser and work view in the side panel, `ffnetWorks` table, dashboard edition
   switcher; capability flags hide AO3-only features.
 
 ## Later (not scheduled)
+
 - Sync solution (replacement for Google Sheets sync). Will need infrastructure.
 - Wattpad / Tumblr editions.
 - Firefox build (`wxt build -b firefox`).
@@ -174,6 +195,7 @@ Status: `todo` · `in progress` · `awaiting test` · `done` · `deferred` · `d
   works on listing pages), AO3 page theme toggle, floating sidebar.
 
 ## Log
+
 - 2026-10-28: Plan created. Upstream v3.17.52 moved to `.old/` on branch `wxt-rewrite`.
 - 2026-10-28: M0 approved. M1 scaffold built: WXT 0.21.5, Solid 1.9, TS 7, Vitest 5.
 - 2026-10-28: M1 approved (display name "FandomGobbler (Fork)"). M2 started.
@@ -199,3 +221,5 @@ Status: `todo` · `in progress` · `awaiting test` · `done` · `deferred` · `d
 - 2026-10-28: Fandom/author options (dashboard + side panel) limited to works in the selected status; an orphaned selection resets to all.
 - 2026-10-28: "Ch. N ↗" link to the current chapter on AO3 (new tab): side panel library items bottom-right, dashboard "Read" column in list and bottom-right corner in grid. Parser stores `chapterIds` from the chapter dropdown; without them links fall back to the full-work page at `#chapter-N`.
 - 2026-10-28: M7 approved. Intermission 7b (Tailwind, Prettier, ESLint, CI) started.
+- 2026-10-28: 7b built: Tailwind v4 (all hand-written CSS converted), Prettier + ESLint, `pnpm check`, GitHub Actions CI. TypeScript pinned to 6.0 for typescript-eslint.
+- 2026-10-28: 7b approved. Intermission 7c (side panel: library as main view, detail view with breadcrumb, current work pinned) started.

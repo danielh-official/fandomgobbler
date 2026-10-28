@@ -1,6 +1,7 @@
 import { For, onCleanup, untrack } from 'solid-js';
 import { saveAo3Work } from '@/utils/library';
 import type { Ao3Work } from '@/utils/models';
+import { sectionHeading } from './ui';
 
 // Notes, rating and chapter progress. Only for tracked works: untracked ones aren't stored.
 // Render keyed on the work id: the notes field is uncontrolled so saves don't move the cursor.
@@ -28,9 +29,10 @@ export function Personal(props: { work: Ao3Work }) {
   return (
     <>
       <div>
-        <h2>Current chapter</h2>
-        <div class="chapter-row">
+        <h2 class={sectionHeading}>Current chapter</h2>
+        <div class="flex items-center gap-2">
           <input
+            class="w-16"
             type="number"
             min="0"
             max={w().chaptersPosted ?? undefined}
@@ -39,7 +41,10 @@ export function Personal(props: { work: Ao3Work }) {
             aria-label="Current chapter"
             onChange={(e) => setChapter(e.currentTarget.valueAsNumber)}
           />
-          <span class="muted">of {w().chaptersPosted ?? '?'}{w().chaptersTotal ? '' : ' (ongoing)'}</span>
+          <span class="text-muted">
+            of {w().chaptersPosted ?? '?'}
+            {w().chaptersTotal ? '' : ' (ongoing)'}
+          </span>
           <button onClick={() => setChapter(chapter() + 1)} disabled={chapter() >= maxChapter()}>
             +1
           </button>
@@ -47,12 +52,12 @@ export function Personal(props: { work: Ao3Work }) {
       </div>
 
       <div>
-        <h2>My rating</h2>
-        <div class="stars" role="group" aria-label="My rating">
+        <h2 class={sectionHeading}>My rating</h2>
+        <div class="flex gap-0.5" role="group" aria-label="My rating">
           <For each={[1, 2, 3, 4, 5]}>
             {(n) => (
               <button
-                class="star"
+                class="border-0 bg-transparent px-0.5 py-0 text-xl leading-none text-border aria-pressed:text-star"
                 aria-label={`${n} star${n > 1 ? 's' : ''}`}
                 aria-pressed={(w().rating ?? 0) >= n}
                 onClick={() => setRating(n)}
@@ -65,9 +70,9 @@ export function Personal(props: { work: Ao3Work }) {
       </div>
 
       <div>
-        <h2>Notes</h2>
+        <h2 class={sectionHeading}>Notes</h2>
         <textarea
-          class="notes"
+          class="w-full resize-y"
           rows="4"
           value={untrack(() => props.work.notes ?? '')}
           placeholder="Private notes"
