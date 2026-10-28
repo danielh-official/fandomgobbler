@@ -183,6 +183,11 @@ Status: `todo` · `in progress` · `awaiting test` · `done` · `deferred` · `d
 - Bookmark import and Marked for Later import.
 - **Manual only:** started by a button click, never scheduled. Pages fetched one at a
   time with a delay between requests, progress shown, cancellable.
+- **Idempotent:** works already in the library are left completely untouched (status,
+  chapter, flags, rating, notes, dates, metadata). Only new works are added, with the
+  status chosen for the import. Test: running the same import twice changes nothing.
+- No skip list for untracked works (an untracked work still in AO3 bookmarks comes back
+  on the next import). Add one only if the user asks.
 
 ### 10. Deleted-work checker
 
@@ -253,3 +258,4 @@ Status: `todo` · `in progress` · `awaiting test` · `done` · `deferred` · `d
 - 2026-10-28: Side panel filters in a collapsible <details> (closed by default, open state in localStorage); collapsed title shows the active filters.
 - 2026-10-28: "Not finished yet" checkbox on the last posted chapter (`lastChapterUnfinished`, cleared on chapter change); counts as 1 unread (shown and filtered) via `unreadChapters`.
 - 2026-10-28: M8 (stats/charts) deferred.
+- 2026-10-28: M9 decision: imports leave existing works untouched; no skip list for now.
