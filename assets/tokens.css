@@ -1,0 +1,65 @@
+/* Design tokens shared by every extension page. */
+:root {
+  --fg-bg: #f7f6f2;
+  --fg-surface: #ffffff;
+  --fg-text: #1f2328;
+  --fg-muted: #656a72;
+  --fg-border: #e2e0da;
+  --fg-accent: #2f6f3e;
+  --fg-accent-soft: #e4eee6;
+  --fg-on-accent: #ffffff;
+  --fg-danger: #b42318;
+  --fg-radius: 8px;
+  --fg-radius-pill: 999px;
+  --fg-font: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --fg-font-size: 14px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--fg-bg);
+  color: var(--fg-text);
+  font: var(--fg-font-size) / 1.45 var(--fg-font);
+}
+
+a {
+  color: var(--fg-accent);
+}
+
+button,
+input {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+  border: 1px solid var(--fg-border);
+  background: var(--fg-surface);
+  border-radius: var(--fg-radius);
+  padding: 4px 10px;
+}
+
+button:hover {
+  border-color: var(--fg-muted);
+}
+
+input[type='text'],
+input[type='url'] {
+  border: 1px solid var(--fg-border);
+  border-radius: var(--fg-radius);
+  padding: 5px 8px;
+  background: var(--fg-surface);
+  min-width: 0;
+}
+
+:focus-visible {
+  outline: 2px solid var(--fg-accent);
+  outline-offset: 1px;
+}

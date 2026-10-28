@@ -1,10 +1,14 @@
+import '@/assets/tokens.css';
+import './style.css';
 import { liveQuery } from 'dexie';
-import { createResource, createSignal, For, from, Match, onCleanup, Show, Switch } from 'solid-js';
+import { createResource, createSignal, For, from, Match, onCleanup, Switch } from 'solid-js';
 import { render } from 'solid-js/web';
 import { browser } from 'wxt/browser';
 import { ao3WorkId, ao3WorkUrl, parseAo3Work } from '@/utils/ao3';
 import { db } from '@/utils/db';
-import { removeAo3Work, saveAo3Work, type Ao3WorkInput } from '@/utils/library';
+import { getAo3Work, saveAo3Work, type Ao3WorkInput } from '@/utils/library';
+import { STATUS_LABELS } from '@/utils/models';
+import { WorkView } from './WorkView';
 
 // What the panel is looking at: the active tab, or a URL the user pasted.
 type Target = { url: string; tabId?: number };
@@ -23,7 +27,7 @@ async function fetchWorkHtml(id: string): Promise<string> {
 
 // Reads the open tab when we have one, so it costs AO3 nothing and sees what the user
 // sees. Falls back to fetching, e.g. when the tab is on the adult-content warning.
-async function loadWork(target: Target): Promise<Ao3WorkInput | null> {
+async function readWork(target: Target): Promise<Ao3WorkInput | null> {
   const id = ao3WorkId(target.url);
   if (!id) return null;
   if (target.tabId !== undefined) {
@@ -36,6 +40,13 @@ async function loadWork(target: Target): Promise<Ao3WorkInput | null> {
   }
   const work = parseAo3Work(await fetchWorkHtml(id), id);
   if (!work) throw new Error('Could not read this work from AO3.');
+  return work;
+}
+
+// Viewing a tracked work refreshes its stored metadata; status and categories are kept.
+async function loadWork(target: Target): Promise<Ao3WorkInput | null> {
+  const work = await readWork(target);
+  if (work && (await getAo3Work(work.id))) await saveAo3Work(work);
   return work;
 }
 
@@ -55,7 +66,7 @@ function App() {
 
   const [work] = createResource(target, loadWork);
   const works = from(liveQuery(() => db.ao3Works.orderBy('addedAt').reverse().toArray()));
-  const tracked = () => works()?.find((w) => w.id === work()?.id);
+  const categories = from(liveQuery(() => db.ao3Categories.orderBy('name').toArray()));
 
   function submitUrl(e: SubmitEvent) {
     e.preventDefault();
@@ -64,53 +75,45 @@ function App() {
   }
 
   return (
-    <main style={{ padding: '16px', 'font-family': 'system-ui, sans-serif', 'font-size': '14px' }}>
-      <h1 style={{ margin: '0 0 12px', 'font-size': '18px' }}>FandomGobbler (Fork)</h1>
+    <main class="panel">
+      <h1>FandomGobbler (Fork)</h1>
 
-      <form onSubmit={submitUrl} style={{ display: 'flex', gap: '6px', 'margin-bottom': '12px' }}>
-        <input name="url" type="url" required placeholder="Paste an AO3 work URL" style={{ flex: 1 }} />
+      <form class="url-form" onSubmit={submitUrl}>
+        <input name="url" type="url" required placeholder="Paste an AO3 work URL" />
         <button>Open</button>
       </form>
 
-      <section style={{ border: '1px solid #ddd', 'border-radius': '8px', padding: '12px', 'margin-bottom': '16px' }}>
-        <Switch fallback={<p style={{ margin: 0 }}>Open an AO3 work, or paste its URL above.</p>}>
-          <Match when={work.loading}>
-            <p style={{ margin: 0 }}>Loading…</p>
-          </Match>
-          <Match when={work.error}>
-            <p style={{ margin: 0, color: '#b00020' }}>{String(work.error)}</p>
-          </Match>
-          <Match when={work()}>
-            {(w) => (
-              <>
-                <strong>{w().title}</strong>
-                <div style={{ color: '#666', margin: '2px 0 10px' }}>by {w().author}</div>
-                <Show
-                  when={tracked()}
-                  fallback={<button onClick={() => saveAo3Work({ ...w(), status: 'want' })}>Track</button>}
-                >
-                  {(t) => (
-                    <>
-                      Tracked · {t().status} <button onClick={() => removeAo3Work(t().id)}>Untrack</button>
-                    </>
-                  )}
-                </Show>
-              </>
-            )}
-          </Match>
-        </Switch>
-      </section>
-
-      <h2 style={{ 'font-size': '15px', margin: '0 0 6px' }}>Library ({works()?.length ?? 0})</h2>
-      <ul style={{ margin: 0, 'padding-left': '18px' }}>
-        <For each={works()}>
+      <Switch fallback={<p class="card muted">Open an AO3 work, or paste its URL above.</p>}>
+        <Match when={work.loading}>
+          <p class="card muted">Loading…</p>
+        </Match>
+        <Match when={work.error}>
+          <p class="card error">{String(work.error)}</p>
+        </Match>
+        <Match when={work()}>
           {(w) => (
-            <li>
-              <a href={w.url} target="_blank">{w.title}</a> by {w.author} · {w.status}
-            </li>
+            <WorkView
+              work={w()}
+              tracked={works()?.find((t) => t.id === w().id)}
+              categories={categories() ?? []}
+            />
           )}
-        </For>
-      </ul>
+        </Match>
+      </Switch>
+
+      <section>
+        <h2>Library ({works()?.length ?? 0})</h2>
+        <ul class="library">
+          <For each={works()}>
+            {(w) => (
+              <li>
+                <a href={w.url} target="_blank">{w.title}</a> <span class="muted">by {w.author}</span>
+                <div class="muted">{w.status ? STATUS_LABELS[w.status] : 'No status'}</div>
+              </li>
+            )}
+          </For>
+        </ul>
+      </section>
     </main>
   );
 }

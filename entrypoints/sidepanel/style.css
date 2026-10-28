@@ -1,0 +1,152 @@
+.panel {
+  padding: 16px;
+  display: grid;
+  gap: 14px;
+}
+
+.panel h1 {
+  margin: 0;
+  font-size: 17px;
+}
+
+.panel h2 {
+  margin: 0 0 6px;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--fg-muted);
+}
+
+.url-form {
+  display: flex;
+  gap: 6px;
+}
+
+.url-form input {
+  flex: 1;
+}
+
+.card {
+  background: var(--fg-surface);
+  border: 1px solid var(--fg-border);
+  border-radius: var(--fg-radius);
+  padding: 14px;
+  display: grid;
+  gap: 10px;
+}
+
+.muted {
+  color: var(--fg-muted);
+}
+
+.error {
+  color: var(--fg-danger);
+}
+
+.work-title {
+  font-size: 16px;
+  font-weight: 600;
+  text-decoration: none;
+  color: var(--fg-text);
+}
+
+.work-title:hover {
+  text-decoration: underline;
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  font-size: 13px;
+}
+
+.stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 12px;
+  margin: 0;
+  font-size: 12px;
+  color: var(--fg-muted);
+}
+
+.stats dt {
+  display: inline;
+}
+
+.stats dd {
+  display: inline;
+  margin: 0 0 0 3px;
+  color: var(--fg-text);
+}
+
+details summary {
+  cursor: pointer;
+  color: var(--fg-muted);
+  font-size: 13px;
+}
+
+.summary-text {
+  white-space: pre-line;
+  margin: 6px 0 0;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip {
+  border-radius: var(--fg-radius-pill);
+  padding: 3px 11px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.chip[aria-pressed='true'] {
+  background: var(--fg-accent);
+  border-color: var(--fg-accent);
+  color: var(--fg-on-accent);
+}
+
+.dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex: none;
+}
+
+.new-category {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.new-category input[type='text'] {
+  flex: 1;
+}
+
+.new-category input[type='color'] {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: none;
+  background: none;
+}
+
+.library {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 6px;
+}
+
+.library li {
+  background: var(--fg-surface);
+  border: 1px solid var(--fg-border);
+  border-radius: var(--fg-radius);
+  padding: 8px 10px;
+}

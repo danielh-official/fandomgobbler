@@ -1,6 +1,16 @@
 export const STATUSES = ['want', 'progress', 'completed', 'rereading', 'onhold', 'dnf', 'lost'] as const;
 export type Status = (typeof STATUSES)[number];
 
+export const STATUS_LABELS: Record<Status, string> = {
+  want: 'For Later',
+  progress: 'Reading',
+  completed: 'Completed',
+  rereading: 'Re-reading',
+  onhold: 'On Hold',
+  dnf: 'Did Not Finish',
+  lost: 'Deleted',
+};
+
 export interface ChapterProgress {
   num: number;
   id?: string;
@@ -30,6 +40,9 @@ export interface Ao3Work {
   seriesUrl?: string | null;
   seriesPosition?: string;
   wordCount?: number | null;
+  chaptersPosted?: number | null;
+  // null when AO3 shows the total as "?".
+  chaptersTotal?: number | null;
   kudosCount?: number | null;
   bookmarksCount?: number | null;
   hitsCount?: number | null;

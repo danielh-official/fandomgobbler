@@ -52,17 +52,16 @@ Status: `todo` · `in progress` · `awaiting test` · `done`
 | 0 | Branch `wxt-rewrite`, upstream moved to `.old/`, this plan | done |
 | 1 | Scaffold | done |
 | 2 | Data layer + side panel shell | done |
-| 3 | AO3 work parser + side panel work view | todo |
-| 4 | Side panel library | todo |
+| 3 | AO3 work parser + side panel work view | done |
+| 4 | Side panel library + notes, rating, chapter progress | in progress |
 | 5 | Backup: export/import | todo |
 | 6 | Side panel on AO3 listing pages | todo |
 | 7 | Dashboard: library | todo |
 | 8 | Dashboard: stats/charts | todo |
-| 9 | Chapter progress | todo |
-| 10 | AO3 imports: bookmarks, Marked for Later | todo |
-| 11 | Background checks: subscription refresh, author watch, availability | todo |
-| 12 | Extension theme | todo |
-| 13 | FF.net edition | todo |
+| 9 | AO3 imports: bookmarks, Marked for Later | todo |
+| 10 | Background checks: subscription refresh, author watch, availability | todo |
+| 11 | Extension theme | todo |
+| 12 | FF.net edition | todo |
 
 ### 1. Scaffold
 - WXT + Solid + TypeScript project at the repo root; package manager decided here.
@@ -88,13 +87,20 @@ Status: `todo` · `in progress` · `awaiting test` · `done`
 ### 3. AO3 work parser + side panel work view
 - Full work parser (reference `.old/modules/ao3-page/core.js`): fandoms, relationship,
   summary, series, stats, dates, chapters. Tests on saved HTML fixtures.
-- Work view in the side panel: status picker, custom categories (create, assign),
-  refresh metadata from AO3.
+- Work view in the side panel: status picker, custom categories (create, assign).
+  Viewing a tracked work refreshes its stored metadata automatically.
+- Fixtures in `utils/fixtures/` are hand-written from AO3 markup (AO3 was down when
+  this was built). Replace or add real saved pages if the parser misreads something.
 
-### 4. Side panel library
+### 4. Side panel library + notes, rating, chapter progress
 - Library list with status filter, search, sort.
 - Notes and rating editing.
+- Chapter progress, **manual only**: the user sets their current chapter in the work view
+  (number input, bounded by chapters posted). Nothing is recorded from browsing. Shown in
+  the work view and library list (e.g. "Ch. 4 / 12"), later the dashboard.
 - Open a library work in the panel's work view.
+- Manage categories: rename, recolour, delete (deleting removes it from works and prunes
+  works left with no status and no category).
 
 ### 5. Backup: export/import
 - JSON export/import of the new format.
@@ -115,22 +121,18 @@ Status: `todo` · `in progress` · `awaiting test` · `done`
 - Visual stats (reference `.old/modules/dashboard/charts-controller.js`),
   relationship insights.
 
-### 9. Chapter progress
-- Record the furthest chapter read when the active tab is on a chapter
-  (`/works/ID/chapters/CID`), shown in side panel and dashboard.
-
-### 10. AO3 imports
+### 9. AO3 imports
 - Bookmark import and Marked for Later import, fetched from AO3 with rate limiting.
 
-### 11. Background checks
+### 10. Background checks
 - Subscription refresh, author watch, deleted-work availability checker.
 - `alarms` + `notifications` permissions added here. Fetching runs in the background
   worker.
 
-### 12. Extension theme
+### 11. Extension theme
 - Light/dark theme for side panel and dashboard via tokens.
 
-### 13. FF.net edition
+### 12. FF.net edition
 - FF.net parser and work view in the side panel, `ffnetWorks` table, dashboard edition
   switcher; capability flags hide AO3-only features.
 
@@ -139,6 +141,8 @@ Status: `todo` · `in progress` · `awaiting test` · `done`
 - Wattpad / Tumblr editions.
 - Firefox build (`wxt build -b firefox`).
 - Keyboard shortcut, context-menu "Track this work".
+- "Set to this chapter" button in the work view when the active tab is on a chapter page
+  (still a manual click, never automatic).
 - Dropped by the no-UI-on-AO3 rule, listed so they aren't forgotten: hidden rules (hiding
   works on listing pages), AO3 page theme toggle, floating sidebar.
 
@@ -150,3 +154,6 @@ Status: `todo` · `in progress` · `awaiting test` · `done`
 - 2026-10-28: M2 change request: no UI on AO3. Content script and messaging removed;
   side panel replaces popup and in-page UI. Milestones renumbered (now 13).
 - 2026-10-28: M2 approved.
+- 2026-10-28: M3 built: full AO3 parser with fixtures, work view (status chips, categories), design tokens in `assets/tokens.css`.
+- 2026-10-28: Decision: chapter progress is set manually, never auto-tracked.
+- 2026-10-28: M3 approved. Chapter progress moved into M4; milestones renumbered (now 12). One-click chapter shortcut backlogged. M4 started.
