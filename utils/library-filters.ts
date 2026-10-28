@@ -8,18 +8,19 @@ export interface SavedFilters {
   status: LibraryFilter['status'];
   fandom: string;
   author: string;
-  unreadOnly: boolean;
+  // Off by default: only works with unread chapters are listed.
+  showRead: boolean;
 }
 
 // Anything missing or malformed falls back to "show everything".
 export function parseFilters(json: string | null): SavedFilters {
-  const filters: SavedFilters = { status: 'all', fandom: '', author: '', unreadOnly: false };
+  const filters: SavedFilters = { status: 'all', fandom: '', author: '', showRead: false };
   try {
     const saved = JSON.parse(json ?? 'null') ?? {};
     if (STATUSES.includes(saved.status)) filters.status = saved.status;
     if (typeof saved.fandom === 'string') filters.fandom = saved.fandom;
     if (typeof saved.author === 'string') filters.author = saved.author;
-    filters.unreadOnly = saved.unreadOnly === true;
+    filters.showRead = saved.showRead === true;
   } catch {
     // Unreadable saved state: start from the defaults.
   }
@@ -60,8 +61,8 @@ export function createLibraryFilters(works: () => Ao3Work[] | undefined) {
   const all = () => works() ?? [];
   const counts = createMemo(() => statusCounts(all()));
   // Fandom and author options only cover works that pass the first-tier filters: the
-  // selected status and, when on, "unread chapters only".
-  const narrowed = createMemo(() => firstTier(all(), filters().status, filters().unreadOnly));
+  // selected status and, unless "show read" is on, unread chapters.
+  const narrowed = createMemo(() => firstTier(all(), filters().status, !filters().showRead));
   const fandoms = createMemo(() => valueCounts(narrowed(), (w) => w.fandoms ?? []));
   const authors = createMemo(() => valueCounts(narrowed(), authorsOf));
   // Changing those can leave the chosen fandom or author with no works; fall back to all.
@@ -80,12 +81,12 @@ export function createLibraryFilters(works: () => Ao3Work[] | undefined) {
       query: query(),
       fandom: f.fandom || undefined,
       author: f.author || undefined,
-      unreadOnly: f.unreadOnly,
+      unreadOnly: !f.showRead,
     });
   });
   const active = () => {
     const f = filters();
-    return !!(query() || f.status !== 'all' || f.fandom || f.author || f.unreadOnly);
+    return !!(query() || f.status !== 'all' || f.fandom || f.author || !f.showRead);
   };
 
   return { filters, set, query, setQuery, counts, fandoms, authors, shown, active };

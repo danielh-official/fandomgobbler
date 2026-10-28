@@ -116,10 +116,10 @@ function Dashboard() {
         <label class="col-span-full flex items-center gap-2 text-sm">
           <input
             type="checkbox"
-            checked={lib.filters().unreadOnly}
-            onChange={(e) => lib.set({ unreadOnly: e.currentTarget.checked })}
+            checked={lib.filters().showRead}
+            onChange={(e) => lib.set({ showRead: e.currentTarget.checked })}
           />
-          Unread chapters only
+          Show read
         </label>
         <label class={`${fieldClass} col-span-full`}>
           <span>Status</span>

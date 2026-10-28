@@ -41,12 +41,12 @@ export function LibraryView(props: {
   const filterSummary = () => {
     const f = lib.filters();
     const parts = [
-      f.unreadOnly && 'Unread only',
+      f.showRead && 'Showing read',
       f.status !== 'all' && STATUS_LABELS[f.status],
       f.fandom,
       f.author,
     ].filter(Boolean);
-    return parts.length ? parts.join(' · ') : 'All works';
+    return parts.length ? parts.join(' · ') : 'Unread only';
   };
 
   return (
@@ -62,10 +62,10 @@ export function LibraryView(props: {
           <label class="flex items-center gap-2">
             <input
               type="checkbox"
-              checked={lib.filters().unreadOnly}
-              onChange={(e) => lib.set({ unreadOnly: e.currentTarget.checked })}
+              checked={lib.filters().showRead}
+              onChange={(e) => lib.set({ showRead: e.currentTarget.checked })}
             />
-            Unread chapters only
+            Show read
           </label>
 
           <select

@@ -63,23 +63,23 @@ Never start the next milestone without the go-ahead. Mark status below as work m
 
 Status: `todo` · `in progress` · `awaiting test` · `done` · `deferred` · `dropped`
 
-| #   | Milestone                                                       | Status        |
-| --- | --------------------------------------------------------------- | ------------- |
-| 0   | Branch `wxt-rewrite`, upstream moved to `.old/`, this plan      | done          |
-| 1   | Scaffold                                                        | done          |
-| 2   | Data layer + side panel shell                                   | done          |
-| 3   | AO3 work parser + side panel work view                          | done          |
-| 4   | Side panel library + notes, rating, chapter progress            | done          |
-| 5   | Backup: export/import                                           | deferred      |
-| 6   | Side panel on AO3 listing pages                                 | dropped       |
-| 7   | Dashboard: library                                              | done          |
-| 7b  | Intermission: Tailwind, Prettier, ESLint, GitHub Actions CI     | done          |
-| 7c  | Intermission: side panel layout, unread filter, default order   | done          |
-| 8   | Dashboard: stats/charts                                         | deferred      |
-| 9   | AO3 imports: bookmarks, Marked for Later (manual, rate-limited) | done          |
-| 10  | Background refresh from AO3 (interval, rate-limited)            | todo          |
-| 11  | Extension theme: system, light, dark (done before M10)          | awaiting test |
-| 12  | FF.net edition                                                  | todo          |
+| #   | Milestone                                                       | Status   |
+| --- | --------------------------------------------------------------- | -------- |
+| 0   | Branch `wxt-rewrite`, upstream moved to `.old/`, this plan      | done     |
+| 1   | Scaffold                                                        | done     |
+| 2   | Data layer + side panel shell                                   | done     |
+| 3   | AO3 work parser + side panel work view                          | done     |
+| 4   | Side panel library + notes, rating, chapter progress            | done     |
+| 5   | Backup: export/import                                           | deferred |
+| 6   | Side panel on AO3 listing pages                                 | dropped  |
+| 7   | Dashboard: library                                              | done     |
+| 7b  | Intermission: Tailwind, Prettier, ESLint, GitHub Actions CI     | done     |
+| 7c  | Intermission: side panel layout, unread filter, default order   | done     |
+| 8   | Dashboard: stats/charts                                         | deferred |
+| 9   | AO3 imports: bookmarks, Marked for Later (manual, rate-limited) | done     |
+| 10  | Background refresh from AO3 (interval, rate-limited)            | todo     |
+| 11  | Extension theme: system, light, dark (done before M10)          | done     |
+| 12  | FF.net edition                                                  | todo     |
 
 ### 1. Scaffold
 
@@ -276,3 +276,4 @@ Status: `todo` · `in progress` · `awaiting test` · `done` · `deferred` · `d
 - 2026-10-28: M10 built: dashboard "Check for deleted" (selection or filtered works), paced via the shared `fetchAo3Paced`; 404 marks `lost` with `lostFrom`/`lostAt`, loaded pages refresh metadata.
 - 2026-10-28: M10 renamed to "Refresh from AO3"; progress counts works with new chapters. Sped up: "Only ongoing works" checkbox (on by default) and 2s between works (`REFRESH_DELAY_MS`; imports stay at 3s). Next after commit: intermission for system theme compliance with a light/dark override.
 - 2026-10-28: Manual refresh button removed at the user's request; M10 becomes a background refresh on an interval, after the theme. M11 (theme) built: system default, light/dark override.
+- 2026-10-28: M11 tested and committed. "Unread chapters only" inverted to a "Show read" checkbox, off by default, so the library lists works with unread chapters unless asked (saved as `showRead`; an old saved `unreadOnly` is ignored).
