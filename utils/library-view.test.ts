@@ -111,3 +111,12 @@ test('firstTier: status and unread only', () => {
   expect(ids(firstTier(works, 'progress', true))).toEqual(['1']);
   expect(ids(firstTier(works, 'all', true))).toEqual(['1', '3']);
 });
+
+test('a last chapter marked not finished counts as 1 unread', () => {
+  expect(unreadChapters({ chaptersPosted: 5, furthestChapter: { num: 3 } })).toBe(2);
+  expect(unreadChapters({ chaptersPosted: 5, furthestChapter: { num: 5 } })).toBe(0);
+  expect(unreadChapters({ chaptersPosted: 5, furthestChapter: { num: 5 }, lastChapterUnfinished: true })).toBe(1);
+  expect(unreadChapters({ chaptersPosted: null, lastChapterUnfinished: true })).toBeNull();
+  const works = [work('1', { chaptersPosted: 2, furthestChapter: { num: 2 }, lastChapterUnfinished: true })];
+  expect(ids(viewLibrary(works, { ...all, unreadOnly: true }))).toEqual(['1']);
+});

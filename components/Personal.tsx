@@ -1,4 +1,4 @@
-import { For, onCleanup, untrack } from 'solid-js';
+import { For, onCleanup, Show, untrack } from 'solid-js';
 import { saveAo3Work } from '@/utils/library';
 import type { Ao3Work } from '@/utils/models';
 import { sectionHeading } from './ui';
@@ -22,7 +22,11 @@ export function Personal(props: { work: Ao3Work }) {
   const maxChapter = () => w().chaptersPosted ?? Infinity;
   const setChapter = (n: number) => {
     const num = Math.min(Math.max(0, Math.floor(n) || 0), maxChapter());
-    saveAo3Work({ ...w(), furthestChapter: num ? { num, total: w().chaptersTotal ?? undefined } : undefined });
+    saveAo3Work({
+      ...w(),
+      furthestChapter: num ? { num, total: w().chaptersTotal ?? undefined } : undefined,
+      lastChapterUnfinished: undefined,
+    });
   };
   const chapter = () => w().furthestChapter?.num ?? 0;
 
@@ -49,6 +53,17 @@ export function Personal(props: { work: Ao3Work }) {
             +1
           </button>
         </div>
+        <Show when={chapter() > 0 && chapter() === w().chaptersPosted}>
+          <label class="mt-1.5 flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={!!w().lastChapterUnfinished}
+              onChange={(e) => saveAo3Work({ ...w(), lastChapterUnfinished: e.currentTarget.checked || undefined })}
+            />
+            Not finished yet
+            <span class="text-xs text-muted">(still counts as unread)</span>
+          </label>
+        </Show>
       </div>
 
       <div>

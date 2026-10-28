@@ -1,8 +1,12 @@
 import { STATUSES, type Ao3Work, type Status } from './models';
 
 // Posted chapters past the current chapter; null when the chapter count isn't known.
-export const unreadChapters = (w: Pick<Ao3Work, 'chaptersPosted' | 'furthestChapter'>) =>
-  w.chaptersPosted == null ? null : Math.max(0, w.chaptersPosted - (w.furthestChapter?.num ?? 0));
+// A last chapter marked "not finished yet" still counts as 1.
+export const unreadChapters = (w: Pick<Ao3Work, 'chaptersPosted' | 'furthestChapter' | 'lastChapterUnfinished'>) => {
+  if (w.chaptersPosted == null) return null;
+  const left = Math.max(0, w.chaptersPosted - (w.furthestChapter?.num ?? 0));
+  return left === 0 && w.lastChapterUnfinished ? 1 : left;
+};
 // AO3 shows "Updated" while in progress, "Completed" once done, only "Published" for one-shots.
 export const lastUpdated = (w: Pick<Ao3Work, 'updatedAt' | 'completedAt' | 'publishedAt'>) =>
   w.updatedAt ?? w.completedAt ?? w.publishedAt ?? null;

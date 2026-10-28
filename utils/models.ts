@@ -52,6 +52,9 @@ export interface Ao3Work {
   inferredCompletedAt?: number | null;
   subscribedAtAo3?: boolean | null;
   furthestChapter?: ChapterProgress;
+  // Set by the user while on the last posted chapter without having finished it.
+  // Cleared whenever the current chapter changes.
+  lastChapterUnfinished?: boolean;
   lostFrom?: Status;
   lostAt?: number;
 }

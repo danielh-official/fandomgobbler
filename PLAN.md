@@ -247,3 +247,4 @@ Status: `todo` · `in progress` · `awaiting test` · `done` · `deferred` · `d
 - 2026-10-28: Fandom + Author filters grouped in a padded card (replacing the divider) in side panel and dashboard.
 - 2026-10-28: Side panel search moved below the filters.
 - 2026-10-28: Side panel filters in a collapsible <details> (closed by default, open state in localStorage); collapsed title shows the active filters.
+- 2026-10-28: "Not finished yet" checkbox on the last posted chapter (`lastChapterUnfinished`, cleared on chapter change); counts as 1 unread (shown and filtered) via `unreadChapters`.
