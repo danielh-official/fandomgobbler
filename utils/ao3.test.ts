@@ -1,8 +1,18 @@
 // @vitest-environment happy-dom
 import { expect, test } from 'vitest';
-import { ao3ChapterUrl, ao3WorkId, parseAo3Date, parseAo3Work } from './ao3';
+import {
+  ao3ChapterUrl,
+  ao3WorkId,
+  looksRateLimited,
+  parseAo3Date,
+  parseAo3ListingPage,
+  parseAo3Username,
+  parseAo3Work,
+} from './ao3';
 import chaptered from './fixtures/ao3-work-chaptered.html?raw';
 import oneshot from './fixtures/ao3-work-oneshot.html?raw';
+import bookmarksPage from './fixtures/ao3-bookmarks-page.html?raw';
+import readingsLastPage from './fixtures/ao3-readings-last-page.html?raw';
 
 const local = (y: number, m: number, d: number) => new Date(y, m - 1, d).getTime();
 
@@ -19,7 +29,10 @@ test('ao3WorkId', () => {
 test('parseAo3Date uses local midnight', () => {
   expect(parseAo3Date('2024-01-05')).toBe(local(2024, 1, 5));
   expect(parseAo3Date('')).toBeNull();
+  expect(parseAo3Date('09 Mar 2024')).toBe(local(2024, 3, 9));
+  expect(parseAo3Date('9 Mar 2024')).toBe(local(2024, 3, 9));
   expect(parseAo3Date('Jan 5')).toBeNull();
+  expect(parseAo3Date('09 Foo 2024')).toBeNull();
 });
 
 test('parseAo3Work: chaptered, in progress, logged in and subscribed', () => {
@@ -100,4 +113,51 @@ test('ao3ChapterUrl', () => {
   expect(ao3ChapterUrl({ id: '7', chapterIds: ['10', '11'] })).toBe(`${base}/chapters/10`);
   expect(ao3ChapterUrl({ id: '7', furthestChapter: { num: 3 } })).toBe(`${base}?view_full_work=true#chapter-3`);
   expect(ao3ChapterUrl({ id: '7' })).toBe(base);
+});
+
+test('parseAo3ListingPage: bookmarks page 1', () => {
+  const { works, hasNext, lastPage } = parseAo3ListingPage(bookmarksPage);
+  expect(works.map((w) => w.id)).toEqual(['101', '102', '103']);
+  expect(works[0]).toEqual({
+    id: '101',
+    title: 'Ongoing Work',
+    author: 'writer',
+    authorUrl: 'https://archiveofourown.org/users/writer/pseuds/writer',
+    url: 'https://archiveofourown.org/works/101',
+    fandoms: ['Fandom One'],
+    relationship: 'Character A/Character B',
+    summary: 'One.\n\nTwo.',
+    seriesTitle: 'The Series',
+    seriesUrl: 'https://archiveofourown.org/series/777',
+    seriesPosition: 'Part 2',
+    wordCount: 12345,
+    chaptersPosted: 3,
+    chaptersTotal: null,
+    kudosCount: 1234,
+    bookmarksCount: 56,
+    hitsCount: 78901,
+    updatedAt: local(2024, 3, 9),
+  });
+  expect(works[1]).toMatchObject({ author: 'Anonymous', authorUrl: null, publishedAt: local(2023, 7, 14) });
+  expect(works[1]).not.toHaveProperty('seriesTitle');
+  expect(works[2]).toMatchObject({ completedAt: local(2022, 2, 1) });
+  expect(works[2]).not.toHaveProperty('updatedAt');
+  expect(hasNext).toBe(true);
+  expect(lastPage).toBe(7);
+});
+
+test('parseAo3ListingPage: last page of Marked for Later', () => {
+  const { works, hasNext } = parseAo3ListingPage(readingsLastPage);
+  expect(works.map((w) => w.id)).toEqual(['201']);
+  expect(hasNext).toBe(false);
+});
+
+test('parseAo3Username and looksRateLimited', () => {
+  expect(parseAo3Username(bookmarksPage)).toBe('reader');
+  // Logged out: a login dropdown instead of the greeting.
+  expect(parseAo3Username('<div id="login"><a id="login-dropdown" href="/users/login">Log In</a></div>')).toBeNull();
+  expect(parseAo3Username('<ul id="greeting"><li><a href="/users/login">Log In</a></li></ul>')).toBeNull();
+  expect(parseAo3Username('<p>no header</p>')).toBeNull();
+  expect(looksRateLimited('<h2>Retry later</h2>')).toBe(true);
+  expect(looksRateLimited(bookmarksPage)).toBe(false);
 });

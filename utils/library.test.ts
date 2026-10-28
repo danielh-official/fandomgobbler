@@ -1,7 +1,14 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, expect, test } from 'vitest';
 import { db } from './db';
-import { getAo3Work, removeAo3Work, removeAo3Works, saveAo3Work, setAo3Statuses } from './library';
+import {
+  addAo3WorksIfMissing,
+  getAo3Work,
+  removeAo3Work,
+  removeAo3Works,
+  saveAo3Work,
+  setAo3Statuses,
+} from './library';
 
 const base = { id: '1', title: 'T', author: 'A', url: 'https://archiveofourown.org/works/1' };
 
@@ -45,4 +52,23 @@ test('bulk status and remove', async () => {
   expect(await getAo3Work('missing')).toBeNull();
   await removeAo3Works(['1', '2']);
   expect(await db.ao3Works.count()).toBe(0);
+});
+
+test('addAo3WorksIfMissing adds new works and leaves existing ones untouched', async () => {
+  const mine = await saveAo3Work(
+    { ...base, id: '1', status: 'progress', notes: 'mine', rating: 4, kudosCount: 5, furthestChapter: { num: 2 } },
+    100,
+  );
+  const imported = [
+    { ...base, id: '1', title: 'Renamed on AO3', kudosCount: 999 },
+    { ...base, id: '2', kudosCount: 7 },
+  ];
+  expect(await addAo3WorksIfMissing(imported, 'want', 200)).toBe(1);
+  expect(await getAo3Work('1')).toEqual(mine);
+  expect(await getAo3Work('2')).toMatchObject({ status: 'want', addedAt: 200, movedAt: 200, kudosCount: 7 });
+
+  // Running the same import again changes nothing.
+  const before = await db.ao3Works.toArray();
+  expect(await addAo3WorksIfMissing(imported, 'completed', 300)).toBe(0);
+  expect(await db.ao3Works.toArray()).toEqual(before);
 });

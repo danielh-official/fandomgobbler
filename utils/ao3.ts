@@ -18,11 +18,18 @@ export function ao3WorkUrl(id: string): string {
   return `${AO3_ORIGIN}/works/${id}`;
 }
 
-// AO3 prints dates as YYYY-MM-DD. Anchor them at local midnight: Date.parse would use
-// UTC midnight and show the previous day for anyone west of UTC.
+const MONTHS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+
+// AO3 prints dates as 2024-03-09 on work pages and "09 Mar 2024" on listings. Anchor them
+// at local midnight: Date.parse would use UTC midnight and show the previous day for
+// anyone west of UTC.
 export function parseAo3Date(text: string | undefined): number | null {
-  const m = text?.trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  return m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])).getTime() : null;
+  const s = text?.trim() ?? '';
+  const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (iso) return new Date(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3])).getTime();
+  const named = s.match(/^(\d{1,2}) ([A-Za-z]{3}) (\d{4})$/);
+  const month = MONTHS.indexOf(named?.[2]?.toLowerCase() ?? '');
+  return named && month >= 0 ? new Date(Number(named[3]), month, Number(named[1])).getTime() : null;
 }
 
 const text = (el: Element | null | undefined) => el?.textContent?.replace(/\s+/g, ' ').trim() ?? '';
@@ -102,4 +109,83 @@ export function ao3ChapterUrl(w: Pick<Ao3Work, 'id' | 'chapterIds' | 'furthestCh
   const chapterId = w.chapterIds?.[n - 1];
   if (chapterId) return `${ao3WorkUrl(w.id)}/chapters/${chapterId}`;
   return n === 1 ? ao3WorkUrl(w.id) : `${ao3WorkUrl(w.id)}?view_full_work=true#chapter-${n}`;
+}
+
+// The logged-in user's name from AO3's "Hi, name!" header, or null when logged out.
+export function parseAo3Username(html: string): string | null {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const href = doc.querySelector('#greeting a[href^="/users/"]')?.getAttribute('href');
+  const name = href?.match(/^\/users\/([^/?#]+)/)?.[1];
+  return name && name !== 'login' ? name : null;
+}
+
+// AO3's throttling page instead of the content asked for.
+export function looksRateLimited(html: string): boolean {
+  return /retry later|too many requests|temporarily blocked|rate limit|slow down/i.test(html);
+}
+
+// One page of a work listing (bookmarks, Marked for Later, search, tags...). Bookmarks
+// of series and external works are skipped. Listings show less than a work page, so
+// fields a blurb doesn't have are left out rather than set.
+export function parseAo3ListingPage(html: string): {
+  works: Ao3WorkInput[];
+  hasNext: boolean;
+  lastPage: number | null;
+} {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const works = new Map<string, Ao3WorkInput>();
+  for (const blurb of doc.querySelectorAll('li.blurb')) {
+    const titleLink = blurb.querySelector('h4.heading a[href^="/works/"]');
+    const id = titleLink?.getAttribute('href')?.match(/^\/works\/(\d+)/)?.[1];
+    if (!titleLink || !id || works.has(id)) continue;
+
+    const authors = [...blurb.querySelectorAll('h4.heading a[rel="author"]')];
+    const stat = (name: string) => blurb.querySelector(`dl.stats dd.${name}`);
+    const [posted, total] = text(stat('chapters')).split('/');
+    const chaptersPosted = parseInt(posted ?? '', 10) || null;
+    const chaptersTotal = parseInt(total ?? '', 10) || null;
+    const series = blurb.querySelector('ul.series li');
+    const seriesLink = series?.querySelector('a[href*="/series/"]');
+    const summaryEl = blurb.querySelector('blockquote.summary');
+
+    // The blurb date is the latest revision: an update while in progress, completion for
+    // a finished chaptered work, publication for a one-shot.
+    const date = parseAo3Date(text(blurb.querySelector('p.datetime')));
+    const done = chaptersPosted !== null && chaptersPosted === chaptersTotal;
+    const dateField = !done ? 'updatedAt' : chaptersPosted > 1 ? 'completedAt' : 'publishedAt';
+
+    works.set(id, {
+      id,
+      title: text(titleLink),
+      author: authors.map(text).join(', ') || 'Anonymous',
+      authorUrl: absolute(authors[0]?.getAttribute('href')),
+      url: ao3WorkUrl(id),
+      fandoms: [...blurb.querySelectorAll('h5.fandoms a.tag')].map(text),
+      relationship: text(blurb.querySelector('li.relationships a.tag')),
+      summary: summaryEl ? [...summaryEl.children].map(text).filter(Boolean).join('\n\n') || text(summaryEl) : '',
+      ...(seriesLink && {
+        seriesTitle: text(seriesLink),
+        seriesUrl: absolute(seriesLink.getAttribute('href')),
+        seriesPosition: text(series)
+          .replace(text(seriesLink), '')
+          .replace(/\s*of\s*$/, '')
+          .trim(),
+      }),
+      wordCount: count(stat('words')),
+      chaptersPosted,
+      chaptersTotal,
+      kudosCount: count(stat('kudos')),
+      bookmarksCount: count(stat('bookmarks')),
+      hitsCount: count(stat('hits')),
+      ...(date !== null && { [dateField]: date }),
+    });
+  }
+  const pageNumbers = [...doc.querySelectorAll('ol.pagination a[href*="page="]')].map(
+    (a) => Number(a.getAttribute('href')?.match(/[?&]page=(\d+)/)?.[1]) || 0,
+  );
+  return {
+    works: [...works.values()],
+    hasNext: !!doc.querySelector('ol.pagination li.next a, a[rel="next"]'),
+    lastPage: Math.max(0, ...pageNumbers) || null,
+  };
 }

@@ -35,3 +35,17 @@ export async function setAo3Statuses(ids: string[], status: Status, now = Date.n
 export async function removeAo3Works(ids: string[]): Promise<void> {
   await db.ao3Works.bulkDelete(ids);
 }
+
+// Adds the works that aren't in the library yet, with the given status. Works already in
+// the library are left completely untouched, so running an import again changes nothing.
+// Returns how many were added.
+export async function addAo3WorksIfMissing(works: Ao3WorkInput[], status: Status, now = Date.now()): Promise<number> {
+  return db.transaction('rw', db.ao3Works, async () => {
+    const existing = await db.ao3Works.bulkGet(works.map((w) => w.id));
+    const fresh = works
+      .filter((_, i) => !existing[i])
+      .map((w): Ao3Work => ({ authorUrl: null, ...w, status, addedAt: now, movedAt: now }));
+    await db.ao3Works.bulkAdd(fresh);
+    return fresh.length;
+  });
+}

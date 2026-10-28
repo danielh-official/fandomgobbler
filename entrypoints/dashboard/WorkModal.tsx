@@ -3,8 +3,9 @@ import { WorkView } from '@/components/WorkView';
 import { ao3WorkId } from '@/utils/ao3';
 import { fetchAo3Work, refreshIfTracked } from '@/utils/ao3-fetch';
 import type { Ao3Work } from '@/utils/models';
+import { ImportFromAo3 } from './ImportFromAo3';
 
-export type ModalState = { kind: 'edit'; id: string } | { kind: 'add' } | null;
+export type ModalState = { kind: 'edit'; id: string } | { kind: 'add' } | { kind: 'import' } | null;
 
 // Native <dialog> opened with showModal(): Esc, focus trapping and the backdrop come free.
 export function WorkModal(props: { state: ModalState; library: Ao3Work[]; onClose: () => void }) {
@@ -40,6 +41,9 @@ export function WorkModal(props: { state: ModalState; library: Ao3Work[]; onClos
         </button>
         <Show when={props.state?.kind === 'add'}>
           <AddWork library={props.library} />
+        </Show>
+        <Show when={props.state?.kind === 'import'}>
+          <ImportFromAo3 />
         </Show>
         <Show when={editing()}>{(w) => <WorkView work={w()} tracked={w()} />}</Show>
       </div>

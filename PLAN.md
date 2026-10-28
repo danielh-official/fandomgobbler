@@ -76,7 +76,7 @@ Status: `todo` · `in progress` · `awaiting test` · `done` · `deferred` · `d
 | 7b  | Intermission: Tailwind, Prettier, ESLint, GitHub Actions CI     | done     |
 | 7c  | Intermission: side panel layout, unread filter, default order   | done     |
 | 8   | Dashboard: stats/charts                                         | deferred |
-| 9   | AO3 imports: bookmarks, Marked for Later (manual, rate-limited) | todo     |
+| 9   | AO3 imports: bookmarks, Marked for Later (manual, rate-limited) | done     |
 | 10  | Deleted-work checker (manual, rate-limited)                     | todo     |
 | 11  | Extension theme                                                 | todo     |
 | 12  | FF.net edition                                                  | todo     |
@@ -259,3 +259,5 @@ Status: `todo` · `in progress` · `awaiting test` · `done` · `deferred` · `d
 - 2026-10-28: "Not finished yet" checkbox on the last posted chapter (`lastChapterUnfinished`, cleared on chapter change); counts as 1 unread (shown and filtered) via `unreadChapters`.
 - 2026-10-28: M8 (stats/charts) deferred.
 - 2026-10-28: M9 decision: imports leave existing works untouched; no skip list for now.
+- 2026-10-28: M9 built: dashboard "Import from AO3" (bookmarks or Marked for Later), username detected from AO3's header or typed (remembered), pages 3s apart with 15s/30s rate-limit backoff, saved page by page, cancellable; `addAo3WorksIfMissing` keeps existing works untouched. Pending after commit: detail view should show chapters like the cards ("Ch. 71 / 71 (ongoing)" style) instead of "71/?".
+- 2026-10-28: M9 tested and done. Fixed "Illegal invocation" from calling native fetch as a method of the options object.

@@ -103,6 +103,7 @@ function Dashboard() {
         <button class={primaryButton} onClick={() => setModal({ kind: 'add' })}>
           + Add work
         </button>
+        <button onClick={() => setModal({ kind: 'import' })}>Import from AO3</button>
       </header>
 
       <aside
