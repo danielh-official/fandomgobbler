@@ -33,6 +33,8 @@ when a milestone changes state or a decision is made.
   Actions runs the same on every push and PR. Run it before reporting a milestone done.
 - **TypeScript pinned to 6.0.** typescript-eslint doesn't support TypeScript 7 yet
   (needs <6.1). Revisit when it does.
+- **UI state lives in localStorage**, not URL params: the last filters (shared by side
+  panel and dashboard) and the dashboard's list/grid choice. Library data stays in Dexie.
 - **Package manager:** pnpm. Explicit imports (`imports: false` in `wxt.config.ts`), not
   WXT auto-imports.
 - **No UI on AO3.** Nothing is injected into AO3 pages: no buttons, badges, sidebars,
@@ -72,6 +74,7 @@ Status: `todo` · `in progress` · `awaiting test` · `done` · `deferred` · `d
 | 6   | Side panel on AO3 listing pages                                 | dropped  |
 | 7   | Dashboard: library                                              | done     |
 | 7b  | Intermission: Tailwind, Prettier, ESLint, GitHub Actions CI     | done     |
+| 7c  | Intermission: side panel layout, unread filter, default order   | done     |
 | 8   | Dashboard: stats/charts                                         | todo     |
 | 9   | AO3 imports: bookmarks, Marked for Later (manual, rate-limited) | todo     |
 | 10  | Deleted-work checker (manual, rate-limited)                     | todo     |
@@ -152,6 +155,20 @@ Status: `todo` · `in progress` · `awaiting test` · `done` · `deferred` · `d
   eslint-plugin-solid). `.old/` excluded from both.
 - GitHub Actions: format check, lint, typecheck, tests on push and PR.
 
+### 7c. Intermission: side panel layout
+
+- No tabs. The library is the main view (URL box, search, filters, list). Clicking a work
+  opens a detail view with a "Library › Title" breadcrumb back; the list stays mounted so
+  search and scroll survive.
+- The active tab's work is pinned first in a highlighted "On this page" card, tracked or
+  not, regardless of filters.
+- "Unread chapters only" filter in side panel and dashboard.
+- Filters (status, fandom, author, unread only) are one shared state for side panel and
+  dashboard (`utils/library-filters.ts`): saved in localStorage and synced live between
+  open pages via the `storage` event. Search text is per page and not saved. The
+  dashboard's list/grid choice is saved too; no URL query params.
+- Default order everywhere: last updated on AO3, newest first; undated works last.
+
 ### 8. Dashboard: stats/charts
 
 - Visual stats (reference `.old/modules/dashboard/charts-controller.js`),
@@ -223,3 +240,7 @@ Status: `todo` · `in progress` · `awaiting test` · `done` · `deferred` · `d
 - 2026-10-28: M7 approved. Intermission 7b (Tailwind, Prettier, ESLint, CI) started.
 - 2026-10-28: 7b built: Tailwind v4 (all hand-written CSS converted), Prettier + ESLint, `pnpm check`, GitHub Actions CI. TypeScript pinned to 6.0 for typescript-eslint.
 - 2026-10-28: 7b approved. Intermission 7c (side panel: library as main view, detail view with breadcrumb, current work pinned) started.
+- 2026-10-28: 7c built: side panel library-first with detail + breadcrumb, pinned current work, unread-only filter, default order by last updated.
+- 2026-10-28: 7c change request: filters shared between side panel and dashboard via localStorage (live sync), list/grid remembered, dashboard query params removed.
+- 2026-10-28: Filter order: Unread chapters only, Status, divider, Fandom + Author. Fandom/author options narrowed by status and unread only (`firstTier`).
+- 2026-10-28: Side panel filters in one column. 7c approved.

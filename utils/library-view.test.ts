@@ -1,6 +1,7 @@
 import { expect, test } from 'vitest';
 import {
   authorsOf,
+  firstTier,
   inStatus,
   isOngoing,
   statusCounts,
@@ -77,4 +78,36 @@ test('inStatus', () => {
   const works = [work('1'), work('2', { status: 'dnf' })];
   expect(ids(inStatus(works, 'dnf'))).toEqual(['2']);
   expect(inStatus(works, 'all')).toBe(works);
+});
+
+test('unread-only filter', () => {
+  const works = [
+    work('1', { chaptersPosted: 5, furthestChapter: { num: 5 } }),
+    work('2', { chaptersPosted: 5, furthestChapter: { num: 3 } }),
+    work('3', { chaptersPosted: 2 }),
+    work('4'),
+  ];
+  expect(ids(viewLibrary(works, { ...all, unreadOnly: true }))).toEqual(['3', '2']);
+});
+
+test('ordered by last updated, undated works last by recently added', () => {
+  const works = [
+    work('1', { updatedAt: 100 }),
+    work('2'),
+    work('3', { completedAt: 300 }),
+    work('4', { publishedAt: 200 }),
+    work('5'),
+  ];
+  expect(ids(viewLibrary(works, all))).toEqual(['3', '4', '1', '5', '2']);
+});
+
+test('firstTier: status and unread only', () => {
+  const works = [
+    work('1', { status: 'progress', chaptersPosted: 3, furthestChapter: { num: 1 } }),
+    work('2', { status: 'progress', chaptersPosted: 3, furthestChapter: { num: 3 } }),
+    work('3', { status: 'want', chaptersPosted: 2 }),
+  ];
+  expect(ids(firstTier(works, 'progress', false))).toEqual(['1', '2']);
+  expect(ids(firstTier(works, 'progress', true))).toEqual(['1']);
+  expect(ids(firstTier(works, 'all', true))).toEqual(['1', '3']);
 });

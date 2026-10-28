@@ -1,23 +1,28 @@
 import { STATUSES, type Ao3Work, type Status } from './models';
 
 // Posted chapters past the current chapter; null when the chapter count isn't known.
-export const unreadChapters = (w: Ao3Work) =>
+export const unreadChapters = (w: Pick<Ao3Work, 'chaptersPosted' | 'furthestChapter'>) =>
   w.chaptersPosted == null ? null : Math.max(0, w.chaptersPosted - (w.furthestChapter?.num ?? 0));
 // AO3 shows "Updated" while in progress, "Completed" once done, only "Published" for one-shots.
-export const lastUpdated = (w: Ao3Work) => w.updatedAt ?? w.completedAt ?? w.publishedAt ?? null;
-export const isOngoing = (w: Ao3Work) => w.chaptersTotal == null || (w.chaptersPosted ?? 0) < w.chaptersTotal;
+export const lastUpdated = (w: Pick<Ao3Work, 'updatedAt' | 'completedAt' | 'publishedAt'>) =>
+  w.updatedAt ?? w.completedAt ?? w.publishedAt ?? null;
+export const isOngoing = (w: Pick<Ao3Work, 'chaptersPosted' | 'chaptersTotal'>) =>
+  w.chaptersTotal == null || (w.chaptersPosted ?? 0) < w.chaptersTotal;
 
 export interface LibraryFilter {
   status: Status | 'all';
   query: string;
   fandom?: string;
   author?: string;
+  // Only works with at least one posted chapter past the current one.
+  unreadOnly?: boolean;
 }
 
 // AO3 joins co-authors with ", "; pseuds can't contain commas.
 export const authorsOf = (w: Ao3Work) => w.author.split(', ');
 
-// Filtered library, most recently added first.
+// Filtered library, most recently updated on AO3 first. Works without a known date go
+// last, most recently added first.
 export function viewLibrary(works: Ao3Work[], filter: LibraryFilter): Ao3Work[] {
   const q = filter.query.trim().toLowerCase();
   return works
@@ -26,10 +31,11 @@ export function viewLibrary(works: Ao3Work[], filter: LibraryFilter): Ao3Work[] 
         (filter.status === 'all' || w.status === filter.status) &&
         (!filter.fandom || (w.fandoms ?? []).includes(filter.fandom)) &&
         (!filter.author || authorsOf(w).includes(filter.author)) &&
+        (!filter.unreadOnly || (unreadChapters(w) ?? 0) > 0) &&
         (!q ||
           [w.title, w.author, w.relationship, w.notes, ...(w.fandoms ?? [])].some((s) => s?.toLowerCase().includes(q))),
     )
-    .sort((a, b) => b.addedAt - a.addedAt);
+    .sort((a, b) => (lastUpdated(b) ?? -Infinity) - (lastUpdated(a) ?? -Infinity) || b.addedAt - a.addedAt);
 }
 
 export function statusCounts(works: Ao3Work[]): Record<Status, number> {
@@ -47,3 +53,8 @@ export function valueCounts(works: Ao3Work[], valuesOf: (w: Ao3Work) => string[]
 
 export const inStatus = (works: Ao3Work[], status: Status | 'all') =>
   status === 'all' ? works : works.filter((w) => w.status === status);
+
+// Works passing the first-tier filters (status, unread only); the fandom and author
+// options are built from these.
+export const firstTier = (works: Ao3Work[], status: Status | 'all', unreadOnly: boolean) =>
+  inStatus(works, status).filter((w) => !unreadOnly || (unreadChapters(w) ?? 0) > 0);

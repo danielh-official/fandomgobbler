@@ -1,85 +1,47 @@
 import '@/assets/app.css';
 import { liveQuery } from 'dexie';
-import { createEffect, createMemo, createSignal, For, from, on, Show } from 'solid-js';
+import { createEffect, createSignal, For, from, on, Show } from 'solid-js';
 import { render } from 'solid-js/web';
 import { db } from '@/utils/db';
 import { removeAo3Works, setAo3Statuses } from '@/utils/library';
-import {
-  authorsOf,
-  isOngoing,
-  lastUpdated,
-  statusCounts,
-  unreadChapters,
-  inStatus,
-  valueCounts,
-  viewLibrary,
-  type LibraryFilter,
-} from '@/utils/library-view';
+import { isOngoing, lastUpdated, unreadChapters, type LibraryFilter } from '@/utils/library-view';
 import { STATUS_LABELS, STATUSES, type Ao3Work, type Status } from '@/utils/models';
 import { formatDate, relativeDay } from '@/utils/time';
 import { WorkModal, type ModalState } from './WorkModal';
+import { createLibraryFilters } from '@/utils/library-filters';
 import { ChapterLink } from '@/components/ChapterLink';
 import { dangerButton, linkButton, pressed, primaryButton } from '@/components/ui';
 
 const PAGE_SIZE = 50;
 const COLUMN_LABELS = ['Work', 'Status', 'Progress', 'Words', 'Rating', 'Last updated', 'Read'];
 
-// Filters, layout and page live in the URL so a view can be bookmarked.
-function readUrl() {
-  const p = new URLSearchParams(location.search);
-  const status = p.get('status') as Status | null;
-  return {
-    status: status && STATUSES.includes(status) ? status : ('all' as const),
-    fandom: p.get('fandom') ?? '',
-    author: p.get('author') ?? '',
-    query: p.get('q') ?? '',
-    grid: p.get('view') === 'grid',
-    page: Math.max(0, (parseInt(p.get('page') ?? '', 10) || 1) - 1),
-  };
+const VIEW_KEY = 'fg-dashboard-view';
+
+// List or grid, remembered for next time. Storage may be unavailable; list is the default.
+function loadGrid(): boolean {
+  try {
+    return localStorage.getItem(VIEW_KEY) === 'grid';
+  } catch {
+    return false;
+  }
 }
 
 function Dashboard() {
   const works = from(liveQuery(() => db.ao3Works.toArray()));
   const all = () => works() ?? [];
+  // Filters are shared with the side panel; see createLibraryFilters.
+  const lib = createLibraryFilters(works);
+  const shown = lib.shown;
 
-  const initial = readUrl();
-  const [status, setStatus] = createSignal<LibraryFilter['status']>(initial.status);
-  const [fandom, setFandom] = createSignal(initial.fandom);
-  const [author, setAuthor] = createSignal(initial.author);
-  const [query, setQuery] = createSignal(initial.query);
-  const [grid, setGrid] = createSignal(initial.grid);
-  const [page, setPage] = createSignal(initial.page);
-
+  const [grid, setGrid] = createSignal(loadGrid());
   createEffect(() => {
-    const p = new URLSearchParams();
-    if (status() !== 'all') p.set('status', status());
-    if (fandom()) p.set('fandom', fandom());
-    if (author()) p.set('author', author());
-    if (query()) p.set('q', query());
-    if (grid()) p.set('view', 'grid');
-    if (page() > 0) p.set('page', String(page() + 1));
-    history.replaceState(null, '', p.size ? `?${p}` : location.pathname);
+    try {
+      localStorage.setItem(VIEW_KEY, grid() ? 'grid' : 'list');
+    } catch {
+      // See loadGrid().
+    }
   });
-
-  const counts = () => statusCounts(all());
-  // Fandom and author options only cover works in the selected status.
-  const fandoms = createMemo(() => valueCounts(inStatus(all(), status()), (w) => w.fandoms ?? []));
-  const authors = createMemo(() => valueCounts(inStatus(all(), status()), authorsOf));
-  // A status change can leave the chosen fandom or author with no works; fall back to all.
-  // Waits for the library to load so a bookmarked filter isn't cleared on startup.
-  createEffect(() => {
-    if (!works()) return;
-    if (fandom() && !fandoms().some(([f]) => f === fandom())) setFandom('');
-    if (author() && !authors().some(([a]) => a === author())) setAuthor('');
-  });
-  const shown = createMemo(() =>
-    viewLibrary(all(), {
-      status: status(),
-      query: query(),
-      fandom: fandom() || undefined,
-      author: author() || undefined,
-    }),
-  );
+  const [page, setPage] = createSignal(0);
 
   const pages = () => Math.max(1, Math.ceil(shown().length / PAGE_SIZE));
   const pageWorks = () => shown().slice(page() * PAGE_SIZE, (page() + 1) * PAGE_SIZE);
@@ -88,7 +50,7 @@ function Dashboard() {
   const [selected, setSelected] = createSignal(new Set<string>());
   createEffect(
     on(
-      [status, fandom, author, query],
+      [lib.filters, lib.query],
       () => {
         setPage(0);
         setSelected(new Set<string>());
@@ -96,7 +58,7 @@ function Dashboard() {
       { defer: true },
     ),
   );
-  // Clamp a bookmarked page number once the library has loaded.
+  // Removing works can leave the current page past the end.
   createEffect(() => works() && page() >= pages() && setPage(pages() - 1));
   const toggle = (id: string) => {
     const next = new Set(selected());
@@ -135,8 +97,8 @@ function Dashboard() {
           type="search"
           class="max-w-[520px] flex-[1_1_260px] px-2.5 py-[7px]"
           placeholder="Search title, author, fandom, notes"
-          value={query()}
-          onInput={(e) => setQuery(e.currentTarget.value)}
+          value={lib.query()}
+          onInput={(e) => lib.setQuery(e.currentTarget.value)}
         />
         <button class={primaryButton} onClick={() => setModal({ kind: 'add' })}>
           + Add work
@@ -147,28 +109,41 @@ function Dashboard() {
         class="grid grid-cols-[repeat(auto-fit,minmax(160px,1fr))] content-start gap-3 [grid-area:filters] md:sticky md:top-4 md:grid-cols-none md:self-start"
         aria-label="Filters"
       >
-        <label class={fieldClass}>
+        <label class="col-span-full flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={lib.filters().unreadOnly}
+            onChange={(e) => lib.set({ unreadOnly: e.currentTarget.checked })}
+          />
+          Unread chapters only
+        </label>
+        <label class={`${fieldClass} col-span-full`}>
           <span>Status</span>
           <select
             class="text-sm text-text"
-            value={status()}
-            onChange={(e) => setStatus(e.currentTarget.value as LibraryFilter['status'])}
+            value={lib.filters().status}
+            onChange={(e) => lib.set({ status: e.currentTarget.value as LibraryFilter['status'] })}
           >
             <option value="all">All statuses ({all().length})</option>
             <For each={STATUSES}>
               {(s) => (
                 <option value={s}>
-                  {STATUS_LABELS[s]} ({counts()[s]})
+                  {STATUS_LABELS[s]} ({lib.counts()[s]})
                 </option>
               )}
             </For>
           </select>
         </label>
+        <hr class="col-span-full my-1" />
         <label class={fieldClass}>
           <span>Fandom</span>
-          <select class="text-sm text-text" value={fandom()} onChange={(e) => setFandom(e.currentTarget.value)}>
+          <select
+            class="text-sm text-text"
+            value={lib.filters().fandom}
+            onChange={(e) => lib.set({ fandom: e.currentTarget.value })}
+          >
             <option value="">All fandoms</option>
-            <For each={fandoms()}>
+            <For each={lib.fandoms()}>
               {([f, n]) => (
                 <option value={f}>
                   {f} ({n})
@@ -179,9 +154,13 @@ function Dashboard() {
         </label>
         <label class={fieldClass}>
           <span>Author</span>
-          <select class="text-sm text-text" value={author()} onChange={(e) => setAuthor(e.currentTarget.value)}>
+          <select
+            class="text-sm text-text"
+            value={lib.filters().author}
+            onChange={(e) => lib.set({ author: e.currentTarget.value })}
+          >
             <option value="">All authors</option>
-            <For each={authors()}>
+            <For each={lib.authors()}>
               {([a, n]) => (
                 <option value={a}>
                   {a} ({n})
