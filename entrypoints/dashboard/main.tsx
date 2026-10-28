@@ -10,7 +10,9 @@ import { formatDate, relativeDay } from '@/utils/time';
 import { WorkModal, type ModalState } from './WorkModal';
 import { createLibraryFilters } from '@/utils/library-filters';
 import { ChapterLink } from '@/components/ChapterLink';
+import { ThemePicker } from '@/components/ThemePicker';
 import { card, dangerButton, linkButton, pressed, primaryButton } from '@/components/ui';
+import { applySavedTheme } from '@/utils/theme';
 
 const PAGE_SIZE = 50;
 const COLUMN_LABELS = ['Work', 'Status', 'Progress', 'Words', 'Rating', 'Last updated', 'Read'];
@@ -104,6 +106,7 @@ function Dashboard() {
           + Add work
         </button>
         <button onClick={() => setModal({ kind: 'import' })}>Import from AO3</button>
+        <ThemePicker class="ml-auto" />
       </header>
 
       <aside
@@ -353,4 +356,5 @@ function Row(props: { work: Ao3Work; grid: boolean; selected: boolean; onToggle:
   );
 }
 
+applySavedTheme();
 render(() => <Dashboard />, document.getElementById('app')!);

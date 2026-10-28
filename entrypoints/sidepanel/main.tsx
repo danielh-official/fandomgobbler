@@ -3,12 +3,14 @@ import { liveQuery } from 'dexie';
 import { createResource, createSignal, from, Match, onCleanup, Show, Switch } from 'solid-js';
 import { render } from 'solid-js/web';
 import { browser } from 'wxt/browser';
+import { ThemePicker } from '@/components/ThemePicker';
 import { card, linkButton } from '@/components/ui';
 import { WorkView } from '@/components/WorkView';
 import { ao3WorkId, parseAo3Work } from '@/utils/ao3';
 import { fetchAo3Work, refreshIfTracked } from '@/utils/ao3-fetch';
 import { db } from '@/utils/db';
 import type { Ao3WorkInput } from '@/utils/library';
+import { applySavedTheme } from '@/utils/theme';
 import { LibraryView } from './LibraryView';
 
 // The work in the active tab, read from the page itself so it costs AO3 nothing. Falls
@@ -99,9 +101,12 @@ function App() {
     <main class="grid gap-3.5 p-4">
       <header class="flex items-center justify-between gap-2">
         <h1 class="text-[17px] font-bold">FandomGobbler (Fork)</h1>
-        <button onClick={() => browser.tabs.create({ url: browser.runtime.getURL('/dashboard.html') })}>
-          Dashboard ↗
-        </button>
+        <div class="flex gap-1.5">
+          <ThemePicker />
+          <button onClick={() => browser.tabs.create({ url: browser.runtime.getURL('/dashboard.html') })}>
+            Dashboard ↗
+          </button>
+        </div>
       </header>
 
       <Show when={detail()}>
@@ -141,4 +146,5 @@ function App() {
   );
 }
 
+applySavedTheme();
 render(() => <App />, document.getElementById('app')!);
