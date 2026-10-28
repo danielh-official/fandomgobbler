@@ -25,9 +25,7 @@ export interface Ao3Work {
   author: string;
   authorUrl: string | null;
   url: string;
-  // '' is allowed only while the work is in at least one custom category.
-  status: Status | '';
-  customCats: string[];
+  status: Status;
   addedAt: number;
   movedAt: number;
   finishedAt?: number | null;
@@ -52,13 +50,6 @@ export interface Ao3Work {
   inferredCompletedAt?: number | null;
   subscribedAtAo3?: boolean | null;
   furthestChapter?: ChapterProgress;
-  lostFrom?: Status | '';
+  lostFrom?: Status;
   lostAt?: number;
-}
-
-export interface Category {
-  id: string;
-  name: string;
-  color: string;
-  createdAt: number;
 }

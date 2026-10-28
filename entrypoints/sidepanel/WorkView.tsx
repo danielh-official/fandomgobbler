@@ -1,36 +1,22 @@
-import { createSignal, For, Show } from 'solid-js';
-import { createAo3Category, saveAo3Work, type Ao3WorkInput } from '@/utils/library';
-import { STATUS_LABELS, STATUSES, type Ao3Work, type Category, type Status } from '@/utils/models';
+import { For, Show } from 'solid-js';
+import { removeAo3Work, saveAo3Work, type Ao3WorkInput } from '@/utils/library';
+import { Personal } from './Personal';
+import { STATUS_LABELS, STATUSES, type Ao3Work, type Status } from '@/utils/models';
+import { formatDate, relativeDay, relativeTime } from '@/utils/time';
 
-const CATEGORY_COLORS = ['#7c3aed', '#db2777', '#dc2626', '#d97706', '#16a34a', '#0891b2', '#2563eb', '#4f46e5', '#d946ef', '#6b7280'];
-const categoryColor = (n: number) => CATEGORY_COLORS[n % CATEGORY_COLORS.length] ?? '#6b7280';
 // 'lost' is set by the availability checker, not picked by hand.
 const PICKABLE = STATUSES.filter((s) => s !== 'lost');
 
 const num = (n: number | null | undefined) => (n == null ? null : n.toLocaleString());
-const day = (t: number | null | undefined) => (t == null ? null : new Date(t).toLocaleDateString());
+// AO3 dates are calendar days, so their relative part is in days, not hours.
+const day = (t: number | null | undefined) => (t == null ? null : `${formatDate(t)} (${relativeDay(t)})`);
 
-export function WorkView(props: { work: Ao3WorkInput; tracked?: Ao3Work; categories: Category[] }) {
+export function WorkView(props: { work: Ao3WorkInput; tracked?: Ao3Work }) {
   const w = () => props.work;
-  const status = () => props.tracked?.status ?? '';
-  const cats = () => props.tracked?.customCats ?? [];
+  const status = () => props.tracked?.status;
 
-  // Clicking the current status clears it; with no category left that untracks the work.
-  const pickStatus = (s: Status) => saveAo3Work({ ...w(), status: status() === s ? '' : s });
-
-  const toggleCategory = (id: string) =>
-    saveAo3Work({ ...w(), customCats: cats().includes(id) ? cats().filter((c) => c !== id) : [...cats(), id] });
-
-  const [newName, setNewName] = createSignal('');
-  const [newColor, setNewColor] = createSignal(categoryColor(props.categories.length));
-  async function addCategory(e: SubmitEvent) {
-    e.preventDefault();
-    if (!newName().trim()) return;
-    const category = await createAo3Category(newName(), newColor());
-    await saveAo3Work({ ...w(), customCats: [...cats(), category.id] });
-    setNewName('');
-    setNewColor(categoryColor(props.categories.length + 1));
-  }
+  // Picking a status tracks the work; clicking the current one untracks it.
+  const pickStatus = (s: Status) => (status() === s ? removeAo3Work(w().id) : saveAo3Work({ ...w(), status: s }));
 
   const stats = () =>
     [
@@ -106,39 +92,17 @@ export function WorkView(props: { work: Ao3WorkInput; tracked?: Ao3Work; categor
         </div>
       </div>
 
-      <div>
-        <h2>Categories</h2>
-        <div class="chips" style={{ 'margin-bottom': '8px' }}>
-          <For each={props.categories}>
-            {(c) => (
-              <button class="chip" aria-pressed={cats().includes(c.id)} onClick={() => toggleCategory(c.id)}>
-                <span class="dot" style={{ background: c.color }} />
-                {c.name}
-              </button>
-            )}
-          </For>
-        </div>
-        <form class="new-category" onSubmit={addCategory}>
-          <input
-            type="color"
-            value={newColor()}
-            onInput={(e) => setNewColor(e.currentTarget.value)}
-            aria-label="Category colour"
-          />
-          <input
-            type="text"
-            placeholder="New category"
-            value={newName()}
-            onInput={(e) => setNewName(e.currentTarget.value)}
-          />
-          <button disabled={!newName().trim()}>Add</button>
-        </form>
-      </div>
+      <Show when={props.tracked?.id} keyed>
+        {/* Keyed on id: Personal remounts per work because its notes field is uncontrolled. */}
+        {(_id: string) => <Personal work={props.tracked!} />}
+      </Show>
 
       <Show when={props.tracked}>
-        <p class="muted" style={{ margin: 0, 'font-size': '12px' }}>
-          In your library since {day(props.tracked!.addedAt)}.
-        </p>
+        {(t) => (
+          <p class="muted small">
+            In your library since {formatDate(t().addedAt)} ({relativeTime(t().addedAt)}).
+          </p>
+        )}
       </Show>
     </section>
   );

@@ -1,17 +1,17 @@
 import '@/assets/tokens.css';
 import './style.css';
 import { liveQuery } from 'dexie';
-import { createResource, createSignal, For, from, Match, onCleanup, Switch } from 'solid-js';
+import { createResource, createSignal, from, Match, onCleanup, Show, Switch } from 'solid-js';
 import { render } from 'solid-js/web';
 import { browser } from 'wxt/browser';
 import { ao3WorkId, ao3WorkUrl, parseAo3Work } from '@/utils/ao3';
 import { db } from '@/utils/db';
 import { getAo3Work, saveAo3Work, type Ao3WorkInput } from '@/utils/library';
-import { STATUS_LABELS } from '@/utils/models';
+import { LibraryView } from './LibraryView';
 import { WorkView } from './WorkView';
 
-// What the panel is looking at: the active tab, or a URL the user pasted.
-type Target = { url: string; tabId?: number };
+// What the work view shows: the active tab, a pasted URL, or a work opened from the library.
+type Target = { url: string; tabId?: number; fromLibrary?: boolean };
 
 async function activeTabTarget(): Promise<Target | null> {
   const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
@@ -43,20 +43,28 @@ async function readWork(target: Target): Promise<Ao3WorkInput | null> {
   return work;
 }
 
-// Viewing a tracked work refreshes its stored metadata; status and categories are kept.
+// Library works open from storage, without touching AO3. Viewing a tracked work from a
+// page refreshes its stored metadata; status and personal fields are kept.
 async function loadWork(target: Target): Promise<Ao3WorkInput | null> {
+  const id = ao3WorkId(target.url);
+  if (target.fromLibrary && id) return getAo3Work(id);
   const work = await readWork(target);
   if (work && (await getAo3Work(work.id))) await saveAo3Work(work);
   return work;
 }
 
 function App() {
+  const [tab, setTab] = createSignal<'work' | 'library'>('work');
   const [target, setTarget] = createSignal<Target | null>(null);
   const followTab = () => activeTabTarget().then(setTarget);
   followTab();
 
-  const onActivated = () => followTab();
-  const onUpdated = (_id: number, change: { status?: string }) => change.status === 'complete' && followTab();
+  // Follow the active tab of this window only; background tabs loading shouldn't switch views.
+  let windowId: number | undefined;
+  browser.windows.getCurrent().then((w) => (windowId = w.id));
+  const onActivated = (info: { windowId: number }) => info.windowId === windowId && followTab();
+  const onUpdated = (_id: number, change: { status?: string }, t: { active: boolean; windowId: number }) =>
+    change.status === 'complete' && t.active && t.windowId === windowId && followTab();
   browser.tabs.onActivated.addListener(onActivated);
   browser.tabs.onUpdated.addListener(onUpdated);
   onCleanup(() => {
@@ -65,8 +73,7 @@ function App() {
   });
 
   const [work] = createResource(target, loadWork);
-  const works = from(liveQuery(() => db.ao3Works.orderBy('addedAt').reverse().toArray()));
-  const categories = from(liveQuery(() => db.ao3Categories.orderBy('name').toArray()));
+  const works = from(liveQuery(() => db.ao3Works.toArray()));
 
   function submitUrl(e: SubmitEvent) {
     e.preventDefault();
@@ -76,44 +83,50 @@ function App() {
 
   return (
     <main class="panel">
-      <h1>FandomGobbler (Fork)</h1>
+      <header class="panel-header">
+        <h1>FandomGobbler (Fork)</h1>
+        <nav class="tabs" role="tablist">
+          <button role="tab" aria-selected={tab() === 'work'} onClick={() => setTab('work')}>Work</button>
+          <button role="tab" aria-selected={tab() === 'library'} onClick={() => setTab('library')}>
+            Library ({works()?.length ?? 0})
+          </button>
+        </nav>
+      </header>
 
-      <form class="url-form" onSubmit={submitUrl}>
-        <input name="url" type="url" required placeholder="Paste an AO3 work URL" />
-        <button>Open</button>
-      </form>
+      <Show when={tab() === 'work'}>
+        <form class="url-form" onSubmit={submitUrl}>
+          <input name="url" type="url" required placeholder="Paste an AO3 work URL" />
+          <button>Open</button>
+        </form>
 
-      <Switch fallback={<p class="card muted">Open an AO3 work, or paste its URL above.</p>}>
-        <Match when={work.loading}>
-          <p class="card muted">Loading…</p>
-        </Match>
-        <Match when={work.error}>
-          <p class="card error">{String(work.error)}</p>
-        </Match>
-        <Match when={work()}>
-          {(w) => (
-            <WorkView
-              work={w()}
-              tracked={works()?.find((t) => t.id === w().id)}
-              categories={categories() ?? []}
-            />
-          )}
-        </Match>
-      </Switch>
+        <Show when={target()?.fromLibrary}>
+          <button class="link small" onClick={followTab}>← Back to current tab</button>
+        </Show>
 
-      <section>
-        <h2>Library ({works()?.length ?? 0})</h2>
-        <ul class="library">
-          <For each={works()}>
+        <Switch fallback={<p class="card muted">Open an AO3 work, or paste its URL above.</p>}>
+          <Match when={work.loading}>
+            <p class="card muted">Loading…</p>
+          </Match>
+          <Match when={work.error}>
+            <p class="card error">{String(work.error)}</p>
+          </Match>
+          <Match when={work()}>
             {(w) => (
-              <li>
-                <a href={w.url} target="_blank">{w.title}</a> <span class="muted">by {w.author}</span>
-                <div class="muted">{w.status ? STATUS_LABELS[w.status] : 'No status'}</div>
-              </li>
+              <WorkView work={w()} tracked={works()?.find((t) => t.id === w().id)} />
             )}
-          </For>
-        </ul>
-      </section>
+          </Match>
+        </Switch>
+      </Show>
+
+      <Show when={tab() === 'library'}>
+        <LibraryView
+          works={works() ?? []}
+          onOpen={(w) => {
+            setTarget({ url: w.url, fromLibrary: true });
+            setTab('work');
+          }}
+        />
+      </Show>
     </main>
   );
 }

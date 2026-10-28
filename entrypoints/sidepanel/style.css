@@ -111,31 +111,6 @@ details summary {
   color: var(--fg-on-accent);
 }
 
-.dot {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  flex: none;
-}
-
-.new-category {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-}
-
-.new-category input[type='text'] {
-  flex: 1;
-}
-
-.new-category input[type='color'] {
-  width: 30px;
-  height: 30px;
-  padding: 0;
-  border: none;
-  background: none;
-}
-
 .library {
   margin: 0;
   padding: 0;
@@ -149,4 +124,129 @@ details summary {
   border: 1px solid var(--fg-border);
   border-radius: var(--fg-radius);
   padding: 8px 10px;
+}
+
+.panel-header {
+  display: grid;
+  gap: 10px;
+}
+
+.tabs {
+  display: flex;
+  border-bottom: 1px solid var(--fg-border);
+}
+
+.tabs button {
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: none;
+  padding: 6px 12px;
+  color: var(--fg-muted);
+}
+
+.tabs button[aria-selected='true'] {
+  color: var(--fg-text);
+  border-bottom-color: var(--fg-accent);
+  font-weight: 600;
+}
+
+.small {
+  font-size: 12px;
+  margin: 0;
+}
+
+button.link {
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--fg-accent);
+  text-align: left;
+  font-weight: 600;
+  justify-self: start;
+}
+
+button.link:hover {
+  text-decoration: underline;
+}
+
+button.danger {
+  color: var(--fg-danger);
+  border-color: var(--fg-danger);
+}
+
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+  border: 1px solid var(--fg-border);
+  border-radius: var(--fg-radius);
+  background-color: var(--fg-surface);
+  padding: 5px 8px;
+  min-width: 0;
+}
+
+/* Own caret so it sits inside the padding instead of against the border. */
+select {
+  appearance: none;
+  padding-right: 28px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23656a72' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+}
+
+.notes {
+  width: 100%;
+  resize: vertical;
+}
+
+.chapter-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.chapter-row input {
+  width: 64px;
+  border: 1px solid var(--fg-border);
+  border-radius: var(--fg-radius);
+  padding: 4px 6px;
+  background: var(--fg-surface);
+}
+
+.stars {
+  display: flex;
+  gap: 2px;
+}
+
+.star {
+  border: none;
+  background: none;
+  padding: 0 2px;
+  font-size: 20px;
+  line-height: 1;
+  color: var(--fg-border);
+}
+
+.star[aria-pressed='true'] {
+  color: #d4a017;
+}
+
+.library-view {
+  display: grid;
+  gap: 8px;
+}
+
+.filters {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.item-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  margin-top: 4px;
 }

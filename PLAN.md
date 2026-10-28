@@ -16,6 +16,8 @@ when a milestone changes state or a decision is made.
   `.old/` is imported, built, or shipped. Port behaviour, not code.
 - **No Google Sheets sync.** Dropped for now. Revisit a sync solution after the core
   milestones (see Later).
+- **Tracked = has a status.** No custom categories for now; picking a status tracks a
+  work, clearing it untracks.
 - **Editions stay separate.** One library per platform (AO3, FF.net, ...). In Dexie that
   means one table per platform (e.g. `ao3Works`, `ffnetWorks`), not one table with a
   `platform` discriminator.
@@ -53,7 +55,7 @@ Status: `todo` · `in progress` · `awaiting test` · `done`
 | 1 | Scaffold | done |
 | 2 | Data layer + side panel shell | done |
 | 3 | AO3 work parser + side panel work view | done |
-| 4 | Side panel library + notes, rating, chapter progress | in progress |
+| 4 | Side panel library + notes, rating, chapter progress | done |
 | 5 | Backup: export/import | todo |
 | 6 | Side panel on AO3 listing pages | todo |
 | 7 | Dashboard: library | todo |
@@ -74,7 +76,7 @@ Status: `todo` · `in progress` · `awaiting test` · `done`
   AO3 page logs/shows the stub.
 
 ### 2. Data layer + side panel shell
-- Dexie schema: `ao3Works`, `ao3Categories` (per-platform tables added with each edition).
+- Dexie schema: `ao3Works` (per-platform tables added with each edition).
 - Typed models for a tracked work (fields from `.old/docs/dev/storage-schema.md`
   and `.old/modules/tracked-works/core.js`).
 - Schema versioning via Dexie `version()` upgrades.
@@ -87,7 +89,7 @@ Status: `todo` · `in progress` · `awaiting test` · `done`
 ### 3. AO3 work parser + side panel work view
 - Full work parser (reference `.old/modules/ao3-page/core.js`): fandoms, relationship,
   summary, series, stats, dates, chapters. Tests on saved HTML fixtures.
-- Work view in the side panel: status picker, custom categories (create, assign).
+- Work view in the side panel: status picker.
   Viewing a tracked work refreshes its stored metadata automatically.
 - Fixtures in `utils/fixtures/` are hand-written from AO3 markup (AO3 was down when
   this was built). Replace or add real saved pages if the parser misreads something.
@@ -99,8 +101,6 @@ Status: `todo` · `in progress` · `awaiting test` · `done`
   (number input, bounded by chapters posted). Nothing is recorded from browsing. Shown in
   the work view and library list (e.g. "Ch. 4 / 12"), later the dashboard.
 - Open a library work in the panel's work view.
-- Manage categories: rename, recolour, delete (deleting removes it from works and prunes
-  works left with no status and no category).
 
 ### 5. Backup: export/import
 - JSON export/import of the new format.
@@ -141,6 +141,9 @@ Status: `todo` · `in progress` · `awaiting test` · `done`
 - Wattpad / Tumblr editions.
 - Firefox build (`wxt build -b firefox`).
 - Keyboard shortcut, context-menu "Track this work".
+- Custom categories. Built in M3, removed in M4 at the user's request. Dexie v2 dropped
+  the `ao3Categories` table and `customCats`; bringing them back means a v3 upgrade with
+  per-edition tables (`ao3Categories`), not one table shared across editions.
 - "Set to this chapter" button in the work view when the active tab is on a chapter page
   (still a manual click, never automatic).
 - Dropped by the no-UI-on-AO3 rule, listed so they aren't forgotten: hidden rules (hiding
@@ -157,3 +160,8 @@ Status: `todo` · `in progress` · `awaiting test` · `done`
 - 2026-10-28: M3 built: full AO3 parser with fixtures, work view (status chips, categories), design tokens in `assets/tokens.css`.
 - 2026-10-28: Decision: chapter progress is set manually, never auto-tracked.
 - 2026-10-28: M3 approved. Chapter progress moved into M4; milestones renumbered (now 12). One-click chapter shortcut backlogged. M4 started.
+- 2026-10-28: M4 built: Work/Library tabs, filter/search/sort (`utils/library-view.ts`, old sorts minus Random), notes/rating/manual chapter, category rename/recolour/delete.
+- 2026-10-28: M4 change requests: select caret padding, status counts in the filter, categories removed (Dexie v2 migration).
+- 2026-10-28: M4 change requests: "Most unread chapters" sort; library shows "Ch. cur / posted (ongoing) | n unread".
+- 2026-10-28: M4 change request: exact + relative dates (`utils/time.ts`) in library ("Last updated") and work view.
+- 2026-10-28: M4 approved.
