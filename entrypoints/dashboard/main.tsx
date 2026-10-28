@@ -149,7 +149,7 @@ function Dashboard() {
               <option value="">All fandoms</option>
               <For each={lib.fandoms()}>
                 {([f, n]) => (
-                  <option value={f}>
+                  <option value={f} selected={f === lib.filters().fandom}>
                     {f} ({n})
                   </option>
                 )}
@@ -158,6 +158,8 @@ function Dashboard() {
           </label>
           <label class={fieldClass}>
             <span>Author</span>
+              {/* `selected` per option: the select's value is set before the library loads, when
+                  the saved option doesn't exist yet, so the browser would fall back to "All". */}
             <select
               class="text-sm text-text"
               value={lib.filters().author}
@@ -166,7 +168,7 @@ function Dashboard() {
               <option value="">All authors</option>
               <For each={lib.authors()}>
                 {([a, n]) => (
-                  <option value={a}>
+                  <option value={a} selected={a === lib.filters().author}>
                     {a} ({n})
                   </option>
                 )}
