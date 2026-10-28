@@ -47,7 +47,7 @@ Never start the next milestone without the go-ahead. Mark status below as work m
 
 ## Milestones
 
-Status: `todo` · `in progress` · `awaiting test` · `done`
+Status: `todo` · `in progress` · `awaiting test` · `done` · `deferred`
 
 | # | Milestone | Status |
 |---|---|---|
@@ -56,7 +56,7 @@ Status: `todo` · `in progress` · `awaiting test` · `done`
 | 2 | Data layer + side panel shell | done |
 | 3 | AO3 work parser + side panel work view | done |
 | 4 | Side panel library + notes, rating, chapter progress | done |
-| 5 | Backup: export/import | todo |
+| 5 | Backup: export/import | deferred |
 | 6 | Side panel on AO3 listing pages | todo |
 | 7 | Dashboard: library | todo |
 | 8 | Dashboard: stats/charts | todo |
@@ -102,7 +102,9 @@ Status: `todo` · `in progress` · `awaiting test` · `done`
   the work view and library list (e.g. "Ch. 4 / 12"), later the dashboard.
 - Open a library work in the panel's work view.
 
-### 5. Backup: export/import
+### 5. Backup: export/import (deferred)
+- Deferred by the user on 2026-10-28; not needed yet. Until it exists, the library lives
+  only in this Chrome profile's IndexedDB: removing the extension deletes it.
 - JSON export/import of the new format.
 - Import of the **old extension's export file**. The new extension has a different
   extension ID and can't read the old one's `chrome.storage`, so this is the migration
@@ -165,3 +167,4 @@ Status: `todo` · `in progress` · `awaiting test` · `done`
 - 2026-10-28: M4 change requests: "Most unread chapters" sort; library shows "Ch. cur / posted (ongoing) | n unread".
 - 2026-10-28: M4 change request: exact + relative dates (`utils/time.ts`) in library ("Last updated") and work view.
 - 2026-10-28: M4 approved.
+- 2026-10-28: M5 (backup, old-file import) deferred.
