@@ -13,10 +13,13 @@
     "postinstall": "wxt prepare"
   },
   "dependencies": {
+    "dexie": "^4.4.7",
     "solid-js": "^1.9.17"
   },
   "devDependencies": {
     "@wxt-dev/module-solid": "^1.1.4",
+    "fake-indexeddb": "^6.2.6",
+    "happy-dom": "^21.0.4",
     "typescript": "^7.0.2",
     "vitest": "^5.0.5",
     "wxt": "^0.21.5"

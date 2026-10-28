@@ -1,5 +1,6 @@
+import { browser } from 'wxt/browser';
 import { defineBackground } from 'wxt/utils/define-background';
 
 export default defineBackground(() => {
-  console.log('FandomGobbler (Fork) background started');
+  browser.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
 });

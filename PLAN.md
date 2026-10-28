@@ -21,15 +21,18 @@ when a milestone changes state or a decision is made.
   `platform` discriminator.
 - **Package manager:** pnpm. Explicit imports (`imports: false` in `wxt.config.ts`), not
   WXT auto-imports.
-- **Dexie lives in the extension origin.** IndexedDB in a content script would belong to
-  the host site (e.g. archiveofourown.org), so content scripts never open Dexie directly.
-  They talk to the background worker through typed messages; popup and dashboard
-  (extension pages) can use Dexie directly.
-- **Injected UI uses shadow DOM** (WXT `createShadowRootUi`), so host-page CSS and
-  extension CSS don't collide. AO3 page theming is the exception: it has to restyle the
-  host page, so it is injected as real CSS.
-- **Design tokens** (CSS custom properties) shared by popup, dashboard and injected UI.
-  UI redesign is a secondary goal, folded into each milestone instead of a big-bang pass.
+- **No UI on AO3.** Nothing is injected into AO3 pages: no buttons, badges, sidebars,
+  hiding or page theming. All UI lives in extension pages: the **side panel** (main
+  surface, opened from the toolbar icon) and later a full-tab **dashboard**. There is no
+  popup, because the toolbar click opens the side panel.
+- **How the side panel reads a work.** For the active AO3 tab it reads the page HTML with
+  `scripting.executeScript` (no extra AO3 request, sees what the user sees). For a pasted
+  URL, or when the tab is on the adult-content warning, it fetches the work with
+  `?view_adult=true`. Both paths feed the same parser (`utils/ao3.ts`).
+- **No content scripts, no messaging layer.** Extension pages open Dexie directly. Dexie
+  must never be opened from a content script (it would use the host site's IndexedDB).
+- **Design tokens** (CSS custom properties) shared by side panel and dashboard. UI
+  redesign is a secondary goal, folded into each milestone instead of a big-bang pass.
 
 ## Working loop
 
@@ -48,19 +51,18 @@ Status: `todo` · `in progress` · `awaiting test` · `done`
 |---|---|---|
 | 0 | Branch `wxt-rewrite`, upstream moved to `.old/`, this plan | done |
 | 1 | Scaffold | done |
-| 2 | Data layer | in progress |
-| 3 | AO3 work page: track controls | todo |
-| 4 | Popup | todo |
+| 2 | Data layer + side panel shell | done |
+| 3 | AO3 work parser + side panel work view | todo |
+| 4 | Side panel library | todo |
 | 5 | Backup: export/import | todo |
-| 6 | AO3 listing badges + hidden rules | todo |
-| 7 | AO3 floating sidebar | todo |
-| 8 | Dashboard: library | todo |
-| 9 | Dashboard: stats/charts | todo |
-| 10 | Chapter progress | todo |
-| 11 | AO3 imports: bookmarks, Marked for Later | todo |
-| 12 | Background checks: subscription refresh, author watch, availability | todo |
-| 13 | Themes: extension theme + AO3 page theme | todo |
-| 14 | FF.net edition | todo |
+| 6 | Side panel on AO3 listing pages | todo |
+| 7 | Dashboard: library | todo |
+| 8 | Dashboard: stats/charts | todo |
+| 9 | Chapter progress | todo |
+| 10 | AO3 imports: bookmarks, Marked for Later | todo |
+| 11 | Background checks: subscription refresh, author watch, availability | todo |
+| 12 | Extension theme | todo |
+| 13 | FF.net edition | todo |
 
 ### 1. Scaffold
 - WXT + Solid + TypeScript project at the repo root; package manager decided here.
@@ -72,23 +74,27 @@ Status: `todo` · `in progress` · `awaiting test` · `done`
 - Test: `npm run build` (or equivalent), load `.output/chrome-mv3` unpacked, popup opens,
   AO3 page logs/shows the stub.
 
-### 2. Data layer
-- Dexie schema: per-platform works tables, custom categories, settings.
-- Typed models for a tracked work (port fields from `.old/docs/dev/storage-schema.md`
+### 2. Data layer + side panel shell
+- Dexie schema: `ao3Works`, `ao3Categories` (per-platform tables added with each edition).
+- Typed models for a tracked work (fields from `.old/docs/dev/storage-schema.md`
   and `.old/modules/tracked-works/core.js`).
 - Schema versioning via Dexie `version()` upgrades.
 - Unit tests with `fake-indexeddb`.
-- Test: dev-only debug view or console helpers to add/list/delete works.
+- Data API in `utils/library.ts` (`getAo3Work`, `saveAo3Work`, `removeAo3Work`).
+- Side panel shell: follows the active tab, URL input, Track/Untrack, live library list.
+  Parser reads title and author only.
+- Change request: originally injected a pill on AO3 pages; replaced with the side panel.
 
-### 3. AO3 work page: track controls
-- AO3 work-page parser (reference `.old/modules/ao3-page/core.js`), with tests on saved
-  HTML fixtures.
-- Shadow-DOM track control on work pages: track/untrack, status, category.
+### 3. AO3 work parser + side panel work view
+- Full work parser (reference `.old/modules/ao3-page/core.js`): fandoms, relationship,
+  summary, series, stats, dates, chapters. Tests on saved HTML fixtures.
+- Work view in the side panel: status picker, custom categories (create, assign),
+  refresh metadata from AO3.
 
-### 4. Popup
-- Detect the current tab's work; quick track/edit.
+### 4. Side panel library
 - Library list with status filter, search, sort.
 - Notes and rating editing.
+- Open a library work in the panel's work view.
 
 ### 5. Backup: export/import
 - JSON export/import of the new format.
@@ -96,48 +102,51 @@ Status: `todo` · `in progress` · `awaiting test` · `done`
   extension ID and can't read the old one's `chrome.storage`, so this is the migration
   path for existing data.
 
-### 6. AO3 listing badges + hidden rules
-- Badges on search/listing/bookmark pages for tracked works.
-- Hide rules (reference `.old/modules/hidden-rules/core.js`).
+### 6. Side panel on AO3 listing pages
+- Replaces the old listing badges. When the active tab is an AO3 listing/search/bookmarks
+  page, the panel lists the works on that page, marks which are tracked, and allows
+  quick track. Nothing is changed on the AO3 page itself.
 
-### 7. AO3 floating sidebar
-- Floating button + sidebar on AO3, shadow DOM, position remembered.
-
-### 8. Dashboard: library
+### 7. Dashboard: library
 - Full-tab dashboard: browse, filter, sort, paginate, bulk actions, work detail,
   edition switcher.
 
-### 9. Dashboard: stats/charts
+### 8. Dashboard: stats/charts
 - Visual stats (reference `.old/modules/dashboard/charts-controller.js`),
   relationship insights.
 
-### 10. Chapter progress
-- Track read chapter per work; show progress in sidebar/popup/dashboard.
+### 9. Chapter progress
+- Record the furthest chapter read when the active tab is on a chapter
+  (`/works/ID/chapters/CID`), shown in side panel and dashboard.
 
-### 11. AO3 imports
+### 10. AO3 imports
 - Bookmark import and Marked for Later import, fetched from AO3 with rate limiting.
 
-### 12. Background checks
+### 11. Background checks
 - Subscription refresh, author watch, deleted-work availability checker.
 - `alarms` + `notifications` permissions added here. Fetching runs in the background
-  worker behind typed messages.
+  worker.
 
-### 13. Themes
-- Extension theme (light/dark) via tokens.
-- AO3 page theme toggle (reference `.old/modules/theme-css/`, `.old/dark-early.js`),
-  including no-flash early injection at `document_start`.
+### 12. Extension theme
+- Light/dark theme for side panel and dashboard via tokens.
 
-### 14. FF.net edition
-- Parser, track controls, listing badges, sidebar on FF.net, reusing the shared
-  components; capability flags gate AO3-only features.
+### 13. FF.net edition
+- FF.net parser and work view in the side panel, `ffnetWorks` table, dashboard edition
+  switcher; capability flags hide AO3-only features.
 
 ## Later (not scheduled)
 - Sync solution (replacement for Google Sheets sync). Will need infrastructure.
 - Wattpad / Tumblr editions.
 - Firefox build (`wxt build -b firefox`).
-- Side panel, keyboard shortcut, context-menu "Track this work".
+- Keyboard shortcut, context-menu "Track this work".
+- Dropped by the no-UI-on-AO3 rule, listed so they aren't forgotten: hidden rules (hiding
+  works on listing pages), AO3 page theme toggle, floating sidebar.
 
 ## Log
 - 2026-10-28: Plan created. Upstream v3.17.52 moved to `.old/` on branch `wxt-rewrite`.
 - 2026-10-28: M0 approved. M1 scaffold built: WXT 0.21.5, Solid 1.9, TS 7, Vitest 5.
 - 2026-10-28: M1 approved (display name "FandomGobbler (Fork)"). M2 started.
+- 2026-10-28: M2 built: Dexie 4 db (`ao3Works`, `ao3Categories`), `saveAo3Work` rules ported, typed messaging. `unlimitedStorage` permission added.
+- 2026-10-28: M2 change request: no UI on AO3. Content script and messaging removed;
+  side panel replaces popup and in-page UI. Milestones renumbered (now 13).
+- 2026-10-28: M2 approved.
