@@ -1,6 +1,7 @@
 import { For, Show } from 'solid-js';
 import { removeAo3Work, saveAo3Work, type Ao3WorkInput } from '@/utils/library';
 import { Personal } from './Personal';
+import { isOngoing } from '@/utils/library-view';
 import { STATUS_LABELS, STATUSES, type Ao3Work, type Status } from '@/utils/models';
 import { formatDate, relativeDay, relativeTime } from '@/utils/time';
 import { card, chip, sectionHeading } from './ui';
@@ -12,6 +13,12 @@ const num = (n: number | null | undefined) => (n == null ? null : n.toLocaleStri
 // AO3 dates are calendar days, so their relative part is in days, not hours.
 const day = (t: number | null | undefined) => (t == null ? null : `${formatDate(t)} (${relativeDay(t)})`);
 
+// "71 (ongoing)" when AO3 has no planned total, "5/10 (ongoing)" or "10/10" when it does.
+const chapters = (w: Ao3WorkInput) =>
+  w.chaptersPosted == null
+    ? null
+    : `${w.chaptersPosted}${w.chaptersTotal == null ? '' : `/${w.chaptersTotal}`}${isOngoing(w) ? ' (ongoing)' : ''}`;
+
 export function WorkView(props: { work: Ao3WorkInput; tracked?: Ao3Work }) {
   const w = () => props.work;
   const status = () => props.tracked?.status;
@@ -22,7 +29,7 @@ export function WorkView(props: { work: Ao3WorkInput; tracked?: Ao3Work }) {
   const stats = () =>
     [
       ['Words', num(w().wordCount)],
-      ['Chapters', w().chaptersPosted == null ? null : `${w().chaptersPosted}/${w().chaptersTotal ?? '?'}`],
+      ['Chapters', chapters(w())],
       ['Kudos', num(w().kudosCount)],
       ['Bookmarks', num(w().bookmarksCount)],
       ['Hits', num(w().hitsCount)],
