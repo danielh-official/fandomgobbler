@@ -16,6 +16,11 @@ when a milestone changes state or a decision is made.
   `.old/` is imported, built, or shipped. Port behaviour, not code.
 - **No Google Sheets sync.** Dropped for now. Revisit a sync solution after the core
   milestones (see Later).
+- **Keep AO3 requests to a minimum.** AO3 rate-limits scraping. Prefer reading the tab
+  the user already has open (no request) over fetching. Fetch only on an explicit user
+  action (pasted URL, adult-content fallback), one page at a time. Anything that fetches
+  many pages or runs on a schedule (M9, M10) must be rate-limited and confirmed with the
+  user before it is built.
 - **Tracked = has a status.** No custom categories for now; picking a status tracks a
   work, clearing it untracks.
 - **Editions stay separate.** One library per platform (AO3, FF.net, ...). In Dexie that
@@ -47,7 +52,7 @@ Never start the next milestone without the go-ahead. Mark status below as work m
 
 ## Milestones
 
-Status: `todo` · `in progress` · `awaiting test` · `done` · `deferred`
+Status: `todo` · `in progress` · `awaiting test` · `done` · `deferred` · `dropped`
 
 | # | Milestone | Status |
 |---|---|---|
@@ -57,7 +62,7 @@ Status: `todo` · `in progress` · `awaiting test` · `done` · `deferred`
 | 3 | AO3 work parser + side panel work view | done |
 | 4 | Side panel library + notes, rating, chapter progress | done |
 | 5 | Backup: export/import | deferred |
-| 6 | Side panel on AO3 listing pages | todo |
+| 6 | Side panel on AO3 listing pages | dropped |
 | 7 | Dashboard: library | todo |
 | 8 | Dashboard: stats/charts | todo |
 | 9 | AO3 imports: bookmarks, Marked for Later | todo |
@@ -110,7 +115,10 @@ Status: `todo` · `in progress` · `awaiting test` · `done` · `deferred`
   extension ID and can't read the old one's `chrome.storage`, so this is the migration
   path for existing data.
 
-### 6. Side panel on AO3 listing pages
+### 6. Side panel on AO3 listing pages (dropped)
+- Built, then dropped by the user on 2026-10-28: not needed, and a listing feature
+  invites more AO3 scraping than is safe. The work is in git stash on `wxt-rewrite`
+  ("!!GitHub_Desktop<wxt-rewrite>") if it's ever wanted.
 - Replaces the old listing badges. When the active tab is an AO3 listing/search/bookmarks
   page, the panel lists the works on that page, marks which are tracked, and allows
   quick track. Nothing is changed on the AO3 page itself.
@@ -168,3 +176,4 @@ Status: `todo` · `in progress` · `awaiting test` · `done` · `deferred`
 - 2026-10-28: M4 change request: exact + relative dates (`utils/time.ts`) in library ("Last updated") and work view.
 - 2026-10-28: M4 approved.
 - 2026-10-28: M5 (backup, old-file import) deferred.
+- 2026-10-28: M6 dropped (not needed; AO3 rate-limit risk). Decision: keep AO3 requests minimal.
