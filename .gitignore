@@ -71,3 +71,7 @@ coverage/
 
 # temp
 .old/
+
+# WXT
+.output/
+.wxt/

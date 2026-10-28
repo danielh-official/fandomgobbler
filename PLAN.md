@@ -8,7 +8,8 @@ when a milestone changes state or a decision is made.
 - **Personal fork.** Not published to the Chrome Web Store or any other store. Install
   is local only: build, then load unpacked with Developer Mode enabled.
 - **License:** GPL-3.0 (inherited from upstream). `LICENSE` stays at the repo root.
-- **No rebrand.** Keep the FandomGobbler name and icons.
+- **No rebrand.** Keep the FandomGobbler name and icons, but display it as
+  "FandomGobbler (Fork)" so it is distinguishable from the original when both are installed.
 - **Stack:** WXT + SolidJS + TypeScript. Dexie (IndexedDB) for library data.
   `chrome.storage` only for small settings/UI state, if at all.
 - **Fresh build.** The upstream code lives in `.old/` as **reference only**. Nothing in
@@ -18,6 +19,12 @@ when a milestone changes state or a decision is made.
 - **Editions stay separate.** One library per platform (AO3, FF.net, ...). In Dexie that
   means one table per platform (e.g. `ao3Works`, `ffnetWorks`), not one table with a
   `platform` discriminator.
+- **Package manager:** pnpm. Explicit imports (`imports: false` in `wxt.config.ts`), not
+  WXT auto-imports.
+- **Dexie lives in the extension origin.** IndexedDB in a content script would belong to
+  the host site (e.g. archiveofourown.org), so content scripts never open Dexie directly.
+  They talk to the background worker through typed messages; popup and dashboard
+  (extension pages) can use Dexie directly.
 - **Injected UI uses shadow DOM** (WXT `createShadowRootUi`), so host-page CSS and
   extension CSS don't collide. AO3 page theming is the exception: it has to restyle the
   host page, so it is injected as real CSS.
@@ -39,9 +46,9 @@ Status: `todo` · `in progress` · `awaiting test` · `done`
 
 | # | Milestone | Status |
 |---|---|---|
-| 0 | Branch `wxt-rewrite`, upstream moved to `.old/`, this plan | awaiting test |
-| 1 | Scaffold | todo |
-| 2 | Data layer | todo |
+| 0 | Branch `wxt-rewrite`, upstream moved to `.old/`, this plan | done |
+| 1 | Scaffold | done |
+| 2 | Data layer | in progress |
 | 3 | AO3 work page: track controls | todo |
 | 4 | Popup | todo |
 | 5 | Backup: export/import | todo |
@@ -132,3 +139,5 @@ Status: `todo` · `in progress` · `awaiting test` · `done`
 
 ## Log
 - 2026-10-28: Plan created. Upstream v3.17.52 moved to `.old/` on branch `wxt-rewrite`.
+- 2026-10-28: M0 approved. M1 scaffold built: WXT 0.21.5, Solid 1.9, TS 7, Vitest 5.
+- 2026-10-28: M1 approved (display name "FandomGobbler (Fork)"). M2 started.
