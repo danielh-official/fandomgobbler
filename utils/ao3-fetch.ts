@@ -14,7 +14,7 @@ export async function fetchAo3Work(id: string): Promise<Ao3WorkInput> {
 // Freshly read metadata replaces what a tracked work has stored; status and personal
 // fields are kept. Untracked works are left alone.
 export async function refreshIfTracked(work: Ao3WorkInput): Promise<void> {
-  if (await getAo3Work(work.id)) await saveAo3Work(work);
+  if (await getAo3Work(work.id)) await saveAo3Work({ ...work, refreshedAt: Date.now() });
 }
 
 // A work from page HTML already in hand (an open tab); falls back to one fetch when the

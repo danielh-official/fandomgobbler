@@ -12,7 +12,8 @@ export default defineConfig({
     // scripting + AO3 host access let the side panel read the open AO3 tab and fetch works.
     // contextMenus: right-click "Add to library" on work pages. offscreen: a hidden page that
     // parses AO3 HTML for the background script, which has no DOMParser.
-    permissions: ['unlimitedStorage', 'scripting', 'contextMenus', 'offscreen'],
+    // alarms + storage: the background refresh schedule and its on/off setting.
+    permissions: ['unlimitedStorage', 'scripting', 'contextMenus', 'offscreen', 'alarms', 'storage'],
     host_permissions: ['https://archiveofourown.org/*'],
     action: {},
   },

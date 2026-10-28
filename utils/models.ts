@@ -58,6 +58,8 @@ export interface Ao3Work {
   // Set by the user while on the last posted chapter without having finished it.
   // Cleared whenever the current chapter changes.
   lastChapterUnfinished?: boolean;
+  // Last time the work's AO3 page was read (viewed, or by the background refresh).
+  refreshedAt?: number;
   lostFrom?: Status;
   lostAt?: number;
 }

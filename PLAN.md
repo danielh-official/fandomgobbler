@@ -77,7 +77,7 @@ Status: `todo` · `in progress` · `awaiting test` · `done` · `deferred` · `d
 | 7c  | Intermission: side panel layout, unread filter, default order   | done     |
 | 8   | Dashboard: stats/charts                                         | deferred |
 | 9   | AO3 imports: bookmarks, Marked for Later (manual, rate-limited) | done     |
-| 10  | Background refresh from AO3 (interval, rate-limited)            | todo     |
+| 10  | Background refresh from AO3 (interval, rate-limited)            | done     |
 | 11  | Extension theme: system, light, dark (done before M10)          | done     |
 | 12  | FF.net edition                                                  | todo     |
 
@@ -194,11 +194,17 @@ Status: `todo` · `in progress` · `awaiting test` · `done` · `deferred` · `d
 - Refreshes tracked works' AO3 metadata (new chapters, stats) and marks deleted ones
   `lost` (keeping `lostFrom`). Renamed from "deleted-work checker" at the user's request.
 - **Background trickle on an interval** (user's choice, replacing the manual button, which
-  was built and then removed): an alarm refreshes a few of the least recently refreshed
-  works per tick, ongoing first. Needs `alarms` + `offscreen` (DOMParser for the parsers),
-  a `refreshedAt` field, and an on/off + interval setting. Only runs while Chrome is open.
-- Already in place (uncommitted, tested): `runRefresh` in `utils/ao3-refresh.ts`
-  (`REFRESH_DELAY_MS` 2s), `fetchAo3Paced` shared with imports, `markAo3WorkLost`.
+  was built and then removed). The `refresh` alarm fires every 5 minutes
+  (`REFRESH_EVERY_MIN`); the background asks the offscreen document to refresh the 2
+  (`REFRESH_BATCH`) most overdue works, 2s apart, about 24 an hour. Only while Chrome is
+  open. The alarm is only created when missing, so worker wake-ups don't reset its timer.
+- **Due order** (`pickDue`): a work is due 12h after its last refresh if ongoing, 7 days if
+  completed (so deletions of completed works are still caught); most overdue first, never
+  refreshed first of all. `refreshedAt` is set by this refresh (also for unreadable works,
+  so they don't block the queue) and by viewing a tracked work.
+- **Setting:** on by default; a dashboard card (below the filters) switches it and shows
+  the last run. Stored in `browser.storage.local` (`backgroundRefresh`) because the
+  background has no localStorage. No interval choice; add one if asked.
 - 404 = deleted. A page that loads refreshes the stored metadata (as viewing it would).
   Anything else (restricted while logged out, unrevealed) is counted as unchecked and left
   alone. Deleted works are not re-checked or restored automatically.
@@ -280,3 +286,4 @@ Status: `todo` · `in progress` · `awaiting test` · `done` · `deferred` · `d
 - 2026-10-28: Intermission: toolbar icon opens a popup menu (add the tab's work with a status, open side panel, open dashboard); right-click "Add to library › status" on AO3 work pages via the background + an offscreen document (`DOM_PARSER`), with a ✓/! badge. Fixed saved fandom/author selects showing "All" after reload.
 - 2026-10-28: Settings page removed at the user's request; the theme stays in the page headers.
 - 2026-10-28: Toolbar ✓ badge on any page of a tracked work (chapters, index, ...), set on page load and on library changes (`utils/badge.ts`). Toolbar menu shows "Open in dashboard ↗" for tracked works, via `dashboard.html#work=<id>` (hash dropped after opening).
+- 2026-10-28: M10 done with the proposed defaults (on, 2 works every 5 min, ongoing first, completed weekly, dashboard switch; subscriptions left out). New permissions: `alarms`, `storage`. Not yet run against live AO3.

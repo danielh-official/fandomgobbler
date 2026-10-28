@@ -7,6 +7,7 @@ import { removeAo3Works, setAo3Statuses } from '@/utils/library';
 import { isOngoing, lastUpdated, unreadChapters, type LibraryFilter } from '@/utils/library-view';
 import { STATUS_LABELS, STATUSES, type Ao3Work, type Status } from '@/utils/models';
 import { formatDate, relativeDay } from '@/utils/time';
+import { BackgroundRefresh } from './BackgroundRefresh';
 import { WorkModal, type ModalState } from './WorkModal';
 import { createLibraryFilters } from '@/utils/library-filters';
 import { ChapterLink } from '@/components/ChapterLink';
@@ -187,6 +188,7 @@ function Dashboard() {
             </select>
           </label>
         </div>
+        <BackgroundRefresh class="col-span-full" />
       </aside>
 
       <main class="grid min-w-0 content-start gap-2.5 [grid-area:main]">

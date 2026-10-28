@@ -49,3 +49,14 @@ export async function addAo3WorksIfMissing(works: Ao3WorkInput[], status: Status
     return fresh.length;
   });
 }
+
+// Marks a tracked work as deleted from AO3, remembering its status. Untracked or
+// already-deleted works are left alone.
+export async function markAo3WorkLost(id: string, now = Date.now()): Promise<boolean> {
+  return db.transaction('rw', db.ao3Works, async () => {
+    const w = await db.ao3Works.get(id);
+    if (!w || w.status === 'lost') return false;
+    await db.ao3Works.put({ ...w, status: 'lost', lostFrom: w.status, lostAt: now, movedAt: now });
+    return true;
+  });
+}

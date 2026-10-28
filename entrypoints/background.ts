@@ -5,9 +5,17 @@ import { ao3WorkId } from '@/utils/ao3';
 import { setTrackedBadge } from '@/utils/badge';
 import { db } from '@/utils/db';
 import { PICKABLE_STATUSES, STATUS_LABELS, type Status } from '@/utils/models';
-import type { AddWorkMessage, AddWorkResponse } from './offscreen/main';
+import {
+  loadRefreshSettings,
+  onRefreshSettingsChanged,
+  REFRESH_BATCH,
+  REFRESH_EVERY_MIN,
+  saveRefreshSettings,
+} from '@/utils/refresh-settings';
+import type { AddWorkMessage, AddWorkResponse, RefreshDueMessage, RefreshDueResponse } from './offscreen/main';
 
 const MENU = 'add-work';
+const REFRESH_ALARM = 'refresh';
 const WORK_PAGES = ['https://archiveofourown.org/works/*', 'https://archiveofourown.org/collections/*/works/*'];
 
 // The background can't parse HTML, so the page is handed to the offscreen document.
@@ -61,10 +69,38 @@ async function addFromPage(tabId: number, url: string, status: Status) {
   }
 }
 
+// The alarm exists exactly while background refresh is on. Not recreated when it exists:
+// that would restart its timer on every worker wake-up, so it might never fire.
+async function syncRefreshAlarm() {
+  const { enabled } = await loadRefreshSettings();
+  if (!enabled) await browser.alarms.clear(REFRESH_ALARM);
+  else if (!(await browser.alarms.get(REFRESH_ALARM))) {
+    await browser.alarms.create(REFRESH_ALARM, { delayInMinutes: 1, periodInMinutes: REFRESH_EVERY_MIN });
+  }
+}
+
+// A few of the most overdue works per alarm; the offscreen document does the work.
+async function refreshInBackground() {
+  const at = Date.now();
+  try {
+    await ensureOffscreen();
+    const msg: RefreshDueMessage = { type: 'refresh-due', count: REFRESH_BATCH };
+    const res: RefreshDueResponse = await browser.runtime.sendMessage(msg);
+    if ('error' in res) throw new Error(res.error);
+    await saveRefreshSettings({ last: { at, checked: res.checked, newChapters: res.newChapters, lost: res.lost } });
+  } catch (e) {
+    await saveRefreshSettings({ last: { at, checked: 0, newChapters: 0, lost: 0, error: (e as Error).message } });
+  }
+}
+
 export default defineBackground(() => {
   // The toolbar icon opens the popup menu; the side panel opens from there. Set
   // explicitly because Chrome remembers the earlier "open side panel on click".
   browser.sidePanel.setPanelBehavior({ openPanelOnActionClick: false });
+
+  syncRefreshAlarm();
+  onRefreshSettingsChanged(() => syncRefreshAlarm());
+  browser.alarms.onAlarm.addListener((alarm) => alarm.name === REFRESH_ALARM && refreshInBackground());
 
   // ✓ badge on tabs showing a tracked work. Chrome clears tab badges on navigation, so
   // each page load sets it again; library changes made elsewhere update all AO3 tabs

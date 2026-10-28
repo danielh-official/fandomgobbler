@@ -33,8 +33,8 @@ export interface ImportProgress {
   retryingInMs?: number;
 }
 
-type Fetch = (url: string, init: RequestInit) => Promise<Response>;
-type Wait = (ms: number, signal?: AbortSignal) => Promise<void>;
+export type Fetch = (url: string, init: RequestInit) => Promise<Response>;
+export type Wait = (ms: number, signal?: AbortSignal) => Promise<void>;
 
 export const wait: Wait = (ms, signal) =>
   new Promise((resolve, reject) => {
@@ -53,10 +53,12 @@ export async function detectAo3Username(fetchFn: Fetch = fetch): Promise<string>
   return name;
 }
 
-async function fetchPage(
+// One AO3 request, retried after a long wait when AO3 rate-limits it. Other statuses
+// are returned for the caller to judge (a 404 means something to the deleted-work check).
+export async function fetchAo3Paced(
   url: string,
   opts: { fetchFn: Fetch; sleep: Wait; signal?: AbortSignal; onWait: (ms: number) => void },
-): Promise<string> {
+): Promise<{ status: number; html: string }> {
   for (const backoff of [0, ...BACKOFF_MS]) {
     if (backoff) {
       opts.onWait(backoff);
@@ -64,12 +66,14 @@ async function fetchPage(
     }
     const res = await opts.fetchFn(url, { credentials: 'include', signal: opts.signal });
     if (res.status === 429) continue;
-    if (!res.ok) throw new Error(`AO3 returned ${res.status}.`);
     const html = await res.text();
-    if (!looksRateLimited(html)) return html;
+    if (!res.ok || !looksRateLimited(html)) return { status: res.status, html };
   }
-  throw new Error('AO3 is rate-limiting requests. What was imported so far is saved; run the import again later.');
+  throw new Error('AO3 is rate-limiting requests. Progress so far is saved; try again later.');
 }
+
+// Wrapped: native fetch throws "Illegal invocation" when called as a method of another object.
+export const defaultFetch: Fetch = (url, init) => fetch(url, init);
 
 export async function runImport(opts: {
   source: ImportSource;
@@ -80,20 +84,20 @@ export async function runImport(opts: {
   fetchFn?: Fetch;
   sleep?: Wait;
 }): Promise<ImportProgress> {
-  // Wrapped: native fetch throws "Illegal invocation" when called as a method of another object.
-  const { fetchFn = (url, init) => fetch(url, init), sleep = wait, signal } = opts;
+  const { fetchFn = defaultFetch, sleep = wait, signal } = opts;
   const progress: ImportProgress = { page: 0, lastPage: null, seen: 0, added: 0 };
   const report = () => opts.onProgress?.({ ...progress });
 
   for (let page = 1; ; page++) {
     progress.page = page;
     report();
-    const html = await fetchPage(IMPORT_SOURCES[opts.source].url(opts.username, page), {
+    const { status, html } = await fetchAo3Paced(IMPORT_SOURCES[opts.source].url(opts.username, page), {
       fetchFn,
       sleep,
       signal,
       onWait: (ms) => opts.onProgress?.({ ...progress, retryingInMs: ms }),
     });
+    if (status !== 200) throw new Error(`AO3 returned ${status}.`);
     const { works, hasNext, lastPage } = parseAo3ListingPage(html);
     // An empty first page without AO3's logged-in header: Marked for Later is private.
     if (page === 1 && !works.length && !parseAo3Username(html) && opts.source === 'markedForLater') {
