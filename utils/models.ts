@@ -41,6 +41,8 @@ export interface Ao3Work {
   chaptersPosted?: number | null;
   // null when AO3 shows the total as "?".
   chaptersTotal?: number | null;
+  // AO3 chapter ids in reading order, from the chapter dropdown on a chapter page.
+  chapterIds?: string[];
   kudosCount?: number | null;
   bookmarksCount?: number | null;
   hitsCount?: number | null;

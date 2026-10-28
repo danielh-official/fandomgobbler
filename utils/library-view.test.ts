@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { isOngoing, statusCounts, unreadChapters, viewLibrary, type LibraryFilter } from './library-view';
+import { authorsOf, inStatus, isOngoing, statusCounts, unreadChapters, valueCounts, viewLibrary, type LibraryFilter } from './library-view';
 import type { Ao3Work } from './models';
 
 const work = (id: string, extra: Partial<Ao3Work> = {}): Ao3Work => ({
@@ -22,30 +22,9 @@ test('filters by status and query', () => {
     work('2', { notes: 'reread soon' }),
     work('3', { title: 'Omens Of Doom' }),
   ];
-  expect(ids(viewLibrary(works, { ...all, status: 'progress' }, 'recently-added'))).toEqual(['1']);
-  expect(ids(viewLibrary(works, { ...all, query: ' omens ' }, 'recently-added'))).toEqual(['3', '1']);
-  expect(ids(viewLibrary(works, { ...all, query: 'REREAD' }, 'recently-added'))).toEqual(['2']);
-});
-
-test('numeric sorts put missing values last and fall back to recently added', () => {
-  const works = [work('1', { kudosCount: 5 }), work('2'), work('3', { kudosCount: 9 }), work('4')];
-  expect(ids(viewLibrary(works, all, 'most-kudos'))).toEqual(['3', '1', '4', '2']);
-});
-
-test('unread sorts put read works last', () => {
-  const works = [
-    work('1', { status: 'completed', wordCount: 1 }),
-    work('2', { wordCount: 500 }),
-    work('3', { wordCount: 100 }),
-    work('4'),
-  ];
-  expect(ids(viewLibrary(works, all, 'shortest-unread'))).toEqual(['3', '2', '4', '1']);
-  expect(ids(viewLibrary(works, all, 'longest-unread'))).toEqual(['2', '3', '4', '1']);
-});
-
-test('oldest in For Later', () => {
-  const works = [work('1', { status: 'progress' }), work('3'), work('2')];
-  expect(ids(viewLibrary(works, all, 'oldest-for-later'))).toEqual(['2', '3', '1']);
+  expect(ids(viewLibrary(works, { ...all, status: 'progress' }))).toEqual(['1']);
+  expect(ids(viewLibrary(works, { ...all, query: ' omens ' }))).toEqual(['3', '1']);
+  expect(ids(viewLibrary(works, { ...all, query: 'REREAD' }))).toEqual(['2']);
 });
 
 test('statusCounts', () => {
@@ -60,5 +39,23 @@ test('unread chapters and ongoing', () => {
   expect(isOngoing(started)).toBe(true);
   expect(isOngoing(unstarted)).toBe(false);
   expect(isOngoing(work('4', { chaptersPosted: 3, chaptersTotal: 10 }))).toBe(true);
-  expect(ids(viewLibrary([unknown, unstarted, started], all, 'most-unread-chapters'))).toEqual(['1', '2', '3']);
+});
+
+test('fandom filter and counts', () => {
+  const works = [work('1', { fandoms: ['B', 'A'] }), work('2', { fandoms: ['A'] }), work('3')];
+  expect(ids(viewLibrary(works, { ...all, fandom: 'A' }))).toEqual(['2', '1']);
+  expect(valueCounts(works, (w) => w.fandoms ?? [])).toEqual([['A', 2], ['B', 1]]);
+});
+
+test('author filter splits co-authors', () => {
+  const works = [work('1', { author: 'one, two' }), work('2', { author: 'two' }), work('3', { author: 'three' })];
+  expect(ids(viewLibrary(works, { ...all, author: 'two' }))).toEqual(['2', '1']);
+  expect(valueCounts(works, authorsOf)).toEqual([['two', 2], ['one', 1], ['three', 1]]);
+});
+
+
+test('inStatus', () => {
+  const works = [work('1'), work('2', { status: 'dnf' })];
+  expect(ids(inStatus(works, 'dnf'))).toEqual(['2']);
+  expect(inStatus(works, 'all')).toBe(works);
 });

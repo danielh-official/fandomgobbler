@@ -1,6 +1,15 @@
 <!-- Hand-written from AO3's work page markup; trimmed to the parts the parser reads. -->
 <div id="main" class="works-show region">
   <ul class="work navigation actions">
+    <li class="chapter" aria-haspopup="true">
+      <form method="get" action="/works/4242/chapters">
+        <select name="selected_id" id="selected_id">
+          <option value="9001">1. Beginnings</option>
+          <option selected="selected" value="9002">2. Middles</option>
+          <option value="9003">3. Ends</option>
+        </select>
+      </form>
+    </li>
     <li class="subscribe">
       <form class="ajax-create-destroy" action="/users/reader/subscriptions/98765" method="post">
         <input type="hidden" name="subscription[subscribable_id]" value="4242" />

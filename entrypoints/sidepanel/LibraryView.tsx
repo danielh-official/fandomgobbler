@@ -1,32 +1,66 @@
-import { createSignal, For, Show } from 'solid-js';
-import { isOngoing, lastUpdated, SORTS, statusCounts, unreadChapters, viewLibrary, type LibraryFilter, type SortKey } from '@/utils/library-view';
+import { createEffect, createMemo, createSignal, For, Show } from 'solid-js';
+import {
+  authorsOf,
+  isOngoing,
+  lastUpdated,
+  statusCounts,
+  unreadChapters,
+  inStatus,
+  valueCounts,
+  viewLibrary,
+  type LibraryFilter,
+} from '@/utils/library-view';
 import { STATUS_LABELS, STATUSES, type Ao3Work } from '@/utils/models';
 import { formatDate, relativeDay } from '@/utils/time';
+import { ChapterLink } from '@/components/ChapterLink';
 
 const PREFS_KEY = 'fg-library-prefs';
 
+type Prefs = { status: LibraryFilter['status']; fandom: string; author: string };
+
 // Per-viewer convenience only, so localStorage is fine; it may be unavailable.
-function loadPrefs(): { status: LibraryFilter['status']; sort: SortKey } {
+function loadPrefs(): Prefs {
+  const prefs: Prefs = { status: 'all', fandom: '', author: '' };
   try {
-    const saved = JSON.parse(localStorage.getItem(PREFS_KEY) ?? 'null');
-    if (saved?.sort in SORTS && (saved.status === 'all' || STATUSES.includes(saved.status))) return saved;
+    const saved = JSON.parse(localStorage.getItem(PREFS_KEY) ?? 'null') ?? {};
+    if (STATUSES.includes(saved.status)) prefs.status = saved.status;
+    if (typeof saved.fandom === 'string') prefs.fandom = saved.fandom;
+    if (typeof saved.author === 'string') prefs.author = saved.author;
   } catch {}
-  return { status: 'all', sort: 'recently-added' };
+  return prefs;
 }
 
 export function LibraryView(props: { works: Ao3Work[]; onOpen: (w: Ao3Work) => void }) {
   const prefs = loadPrefs();
   const [status, setStatus] = createSignal(prefs.status);
-  const [sort, setSort] = createSignal(prefs.sort);
+  const [fandom, setFandom] = createSignal(prefs.fandom);
+  const [author, setAuthor] = createSignal(prefs.author);
   const [query, setQuery] = createSignal('');
-  const savePrefs = () => {
+  createEffect(() => {
+    const next: Prefs = { status: status(), fandom: fandom(), author: author() };
     try {
-      localStorage.setItem(PREFS_KEY, JSON.stringify({ status: status(), sort: sort() }));
+      localStorage.setItem(PREFS_KEY, JSON.stringify(next));
     } catch {}
-  };
+  });
 
   const counts = () => statusCounts(props.works);
-  const shown = () => viewLibrary(props.works, { status: status(), query: query() }, sort());
+  // Fandom and author options only cover works in the selected status.
+  const fandoms = createMemo(() => valueCounts(inStatus(props.works, status()), (w) => w.fandoms ?? []));
+  const authors = createMemo(() => valueCounts(inStatus(props.works, status()), authorsOf));
+  // A status change can leave the chosen fandom or author with no works; fall back to all.
+  // Skipped while the library is still loading (empty) so saved filters survive startup.
+  createEffect(() => {
+    if (!props.works.length) return;
+    if (fandom() && !fandoms().some(([f]) => f === fandom())) setFandom('');
+    if (author() && !authors().some(([a]) => a === author())) setAuthor('');
+  });
+  const shown = () =>
+    viewLibrary(props.works, {
+      status: status(),
+      query: query(),
+      fandom: fandom() || undefined,
+      author: author() || undefined,
+    });
 
   return (
     <div class="library-view">
@@ -36,38 +70,39 @@ export function LibraryView(props: { works: Ao3Work[]; onOpen: (w: Ao3Work) => v
         value={query()}
         onInput={(e) => setQuery(e.currentTarget.value)}
       />
-      <div class="filters">
-        <select
-          value={status()}
-          onChange={(e) => {
-            setStatus(e.currentTarget.value as LibraryFilter['status']);
-            savePrefs();
-          }}
-          aria-label="Status"
-        >
-          <option value="all">All statuses ({props.works.length})</option>
-          <For each={STATUSES}>
-            {(s) => (
-              <option value={s}>
-                {STATUS_LABELS[s]} ({counts()[s]})
-              </option>
-            )}
-          </For>
-        </select>
-        <select
-          value={sort()}
-          onChange={(e) => {
-            setSort(e.currentTarget.value as SortKey);
-            savePrefs();
-          }}
-          aria-label="Sort"
-        >
-          <For each={Object.entries(SORTS)}>{([key, s]) => <option value={key}>{s.label}</option>}</For>
-        </select>
-      </div>
 
-      <Show when={query()}>
-        <p class="muted small">{shown().length} matching</p>
+      <section>
+        <h2 class="section-heading">Filters</h2>
+        <div class="filters">
+          <select
+            value={status()}
+            onChange={(e) => setStatus(e.currentTarget.value as LibraryFilter['status'])}
+            aria-label="Status"
+          >
+            <option value="all">All statuses ({props.works.length})</option>
+            <For each={STATUSES}>
+              {(s) => (
+                <option value={s}>
+                  {STATUS_LABELS[s]} ({counts()[s]})
+                </option>
+              )}
+            </For>
+          </select>
+          <select value={fandom()} onChange={(e) => setFandom(e.currentTarget.value)} aria-label="Fandom">
+            <option value="">All fandoms</option>
+            <For each={fandoms()}>{([f, n]) => <option value={f}>{f} ({n})</option>}</For>
+          </select>
+          <select value={author()} onChange={(e) => setAuthor(e.currentTarget.value)} aria-label="Author">
+            <option value="">All authors</option>
+            <For each={authors()}>{([a, n]) => <option value={a}>{a} ({n})</option>}</For>
+          </select>
+        </div>
+      </section>
+
+      <Show when={query() || status() !== 'all' || fandom() || author()}>
+        <p class="muted small">
+          {shown().length} of {props.works.length} works
+        </p>
       </Show>
 
       <ul class="library">
@@ -86,13 +121,16 @@ export function LibraryView(props: { works: Ao3Work[]; onOpen: (w: Ao3Work) => v
                 </Show>
                 <Show when={w.rating}>{(r) => <span>{'★'.repeat(r())}</span>}</Show>
               </div>
-              <Show when={lastUpdated(w)}>
-                {(t) => (
-                  <div class="muted small">
-                    Last updated: {formatDate(t())} ({relativeDay(t())})
-                  </div>
-                )}
-              </Show>
+              <div class="item-foot small">
+                <Show when={lastUpdated(w)}>
+                  {(t) => (
+                    <span class="muted">
+                      Last updated: {formatDate(t())} ({relativeDay(t())})
+                    </span>
+                  )}
+                </Show>
+                <ChapterLink work={w} />
+              </div>
             </li>
           )}
         </For>

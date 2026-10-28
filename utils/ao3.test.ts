@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { expect, test } from 'vitest';
-import { ao3WorkId, parseAo3Date, parseAo3Work } from './ao3';
+import { ao3ChapterUrl, ao3WorkId, parseAo3Date, parseAo3Work } from './ao3';
 import chaptered from './fixtures/ao3-work-chaptered.html?raw';
 import oneshot from './fixtures/ao3-work-oneshot.html?raw';
 
@@ -38,6 +38,7 @@ test('parseAo3Work: chaptered, in progress, logged in and subscribed', () => {
     wordCount: 12345,
     chaptersPosted: 3,
     chaptersTotal: null,
+    chapterIds: ['9001', '9002', '9003'],
     kudosCount: 1234,
     bookmarksCount: 56,
     hitsCount: 78901,
@@ -87,4 +88,16 @@ test('parseAo3Work: multiple authors; warning page', () => {
     <a rel="author" href="/users/one/pseuds/one">one</a>, <a rel="author" href="/users/two/pseuds/two">two</a></h3>`;
   expect(parseAo3Work(html, '5')).toMatchObject({ author: 'one, two' });
   expect(parseAo3Work('<p class="caution">This work could have adult content.</p>', '1')).toBeNull();
+});
+
+test('one-shot has no chapter ids', () => {
+  expect(parseAo3Work(oneshot, '1')).not.toHaveProperty('chapterIds');
+});
+
+test('ao3ChapterUrl', () => {
+  const base = 'https://archiveofourown.org/works/7';
+  expect(ao3ChapterUrl({ id: '7', chapterIds: ['10', '11'], furthestChapter: { num: 2 } })).toBe(`${base}/chapters/11`);
+  expect(ao3ChapterUrl({ id: '7', chapterIds: ['10', '11'] })).toBe(`${base}/chapters/10`);
+  expect(ao3ChapterUrl({ id: '7', furthestChapter: { num: 3 } })).toBe(`${base}?view_full_work=true#chapter-3`);
+  expect(ao3ChapterUrl({ id: '7' })).toBe(base);
 });

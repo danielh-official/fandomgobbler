@@ -63,10 +63,11 @@ Status: `todo` · `in progress` · `awaiting test` · `done` · `deferred` · `d
 | 4 | Side panel library + notes, rating, chapter progress | done |
 | 5 | Backup: export/import | deferred |
 | 6 | Side panel on AO3 listing pages | dropped |
-| 7 | Dashboard: library | todo |
+| 7 | Dashboard: library | done |
+| 7b | Intermission: Tailwind, Prettier, ESLint, GitHub Actions CI | in progress |
 | 8 | Dashboard: stats/charts | todo |
-| 9 | AO3 imports: bookmarks, Marked for Later | todo |
-| 10 | Background checks: subscription refresh, author watch, availability | todo |
+| 9 | AO3 imports: bookmarks, Marked for Later (manual, rate-limited) | todo |
+| 10 | Deleted-work checker (manual, rate-limited) | todo |
 | 11 | Extension theme | todo |
 | 12 | FF.net edition | todo |
 
@@ -124,20 +125,33 @@ Status: `todo` · `in progress` · `awaiting test` · `done` · `deferred` · `d
   quick track. Nothing is changed on the AO3 page itself.
 
 ### 7. Dashboard: library
-- Full-tab dashboard: browse, filter, sort, paginate, bulk actions, work detail,
-  edition switcher.
+- Full-tab dashboard: browse, filter, sort, paginate, bulk actions, work detail.
+- **Responsive** from phone width to wide desktop: filters move from a sidebar to the top,
+  rows collapse to cards, work detail is a drawer on wide screens and full-width on narrow.
+- Edition switcher waits for the FF.net edition (only AO3 exists).
+
+### 7b. Intermission: tooling
+- Tailwind CSS (v4, Vite plugin). Existing hand-written CSS converted to utilities; design
+  tokens become the Tailwind theme.
+- Prettier (with the Tailwind class-sorting plugin) and ESLint (typescript-eslint +
+  eslint-plugin-solid). `.old/` excluded from both.
+- GitHub Actions: format check, lint, typecheck, tests on push and PR.
 
 ### 8. Dashboard: stats/charts
 - Visual stats (reference `.old/modules/dashboard/charts-controller.js`),
   relationship insights.
 
 ### 9. AO3 imports
-- Bookmark import and Marked for Later import, fetched from AO3 with rate limiting.
+- Bookmark import and Marked for Later import.
+- **Manual only:** started by a button click, never scheduled. Pages fetched one at a
+  time with a delay between requests, progress shown, cancellable.
 
-### 10. Background checks
-- Subscription refresh, author watch, deleted-work availability checker.
-- `alarms` + `notifications` permissions added here. Fetching runs in the background
-  worker.
+### 10. Deleted-work checker
+- Checks tracked works for deletion and marks them `lost` (keeping `lostFrom`).
+- **Manual only:** a button click starts it; rate-limited like M9, progress shown,
+  cancellable. No alarms, no background schedule.
+- Author watch: dropped by the user.
+- Subscription refresh: undecided, not built unless the user asks.
 
 ### 11. Extension theme
 - Light/dark theme for side panel and dashboard via tokens.
@@ -177,3 +191,11 @@ Status: `todo` · `in progress` · `awaiting test` · `done` · `deferred` · `d
 - 2026-10-28: M4 approved.
 - 2026-10-28: M5 (backup, old-file import) deferred.
 - 2026-10-28: M6 dropped (not needed; AO3 rate-limit risk). Decision: keep AO3 requests minimal.
+- 2026-10-28: M9/M10 made manual + rate-limited; author watch dropped; subscription refresh undecided. M7 started.
+- 2026-10-28: M7 built: `dashboard.html` (status sidebar w/ counts, fandom filter, sort, search, 50/page, bulk status/remove, work drawer). Shared UI moved to `components/` + `assets/components.css`. Layout checked at 375/900/1440px.
+- 2026-10-28: M7 change requests: dashboard sorts by clicking column headers (asc, desc, off) with a column-only sort select shown only in card mode; status/fandom/author selects; filters, sort and page in URL query params. Side panel library: "Filters" heading over a 2-column grid (status, fandom, author), separate "Sort" section.
+- 2026-10-28: M7 change requests: sorting removed from dashboard and side panel (both list most recently added first; sort code deleted). Dashboard gets a List/Grid toggle (`view=grid` in the URL); rows are size containers so narrow rows and grid cards share one card layout.
+- 2026-10-28: M7 change requests: works open in a native <dialog> modal (full-screen on phones) instead of a drawer; "+ Add work" in the dashboard fetches one pasted work URL (`utils/ao3-fetch.ts`, shared with the side panel).
+- 2026-10-28: Fandom/author options (dashboard + side panel) limited to works in the selected status; an orphaned selection resets to all.
+- 2026-10-28: "Ch. N ↗" link to the current chapter on AO3 (new tab): side panel library items bottom-right, dashboard "Read" column in list and bottom-right corner in grid. Parser stores `chapterIds` from the chapter dropdown; without them links fall back to the full-work page at `#chapter-N`.
+- 2026-10-28: M7 approved. Intermission 7b (Tailwind, Prettier, ESLint, CI) started.

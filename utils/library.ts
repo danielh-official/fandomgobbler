@@ -1,5 +1,5 @@
 import { db } from './db';
-import type { Ao3Work } from './models';
+import type { Ao3Work, Status } from './models';
 
 export type Ao3WorkInput = Pick<Ao3Work, 'id' | 'title' | 'author' | 'url'> & Partial<Ao3Work>;
 
@@ -24,4 +24,14 @@ export async function saveAo3Work(input: Ao3WorkInput, now = Date.now()): Promis
 
 export async function removeAo3Work(id: string): Promise<void> {
   await db.ao3Works.delete(id);
+}
+
+export async function setAo3Statuses(ids: string[], status: Status, now = Date.now()): Promise<void> {
+  await db.transaction('rw', db.ao3Works, async () => {
+    for (const w of await db.ao3Works.bulkGet(ids)) if (w) await saveAo3Work({ ...w, status }, now);
+  });
+}
+
+export async function removeAo3Works(ids: string[]): Promise<void> {
+  await db.ao3Works.bulkDelete(ids);
 }

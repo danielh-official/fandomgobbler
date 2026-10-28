@@ -1,14 +1,16 @@
 import '@/assets/tokens.css';
+import '@/assets/components.css';
 import './style.css';
 import { liveQuery } from 'dexie';
 import { createResource, createSignal, from, Match, onCleanup, Show, Switch } from 'solid-js';
 import { render } from 'solid-js/web';
 import { browser } from 'wxt/browser';
-import { ao3WorkId, ao3WorkUrl, parseAo3Work } from '@/utils/ao3';
+import { ao3WorkId, parseAo3Work } from '@/utils/ao3';
+import { fetchAo3Work, refreshIfTracked } from '@/utils/ao3-fetch';
 import { db } from '@/utils/db';
-import { getAo3Work, saveAo3Work, type Ao3WorkInput } from '@/utils/library';
+import { getAo3Work, type Ao3WorkInput } from '@/utils/library';
 import { LibraryView } from './LibraryView';
-import { WorkView } from './WorkView';
+import { WorkView } from '@/components/WorkView';
 
 // What the work view shows: the active tab, a pasted URL, or a work opened from the library.
 type Target = { url: string; tabId?: number; fromLibrary?: boolean };
@@ -17,12 +19,6 @@ async function activeTabTarget(): Promise<Target | null> {
   const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
   // tab.url is only visible for sites we have host access to, i.e. AO3.
   return tab?.url ? { url: tab.url, tabId: tab.id } : null;
-}
-
-async function fetchWorkHtml(id: string): Promise<string> {
-  const res = await fetch(`${ao3WorkUrl(id)}?view_adult=true`, { credentials: 'include' });
-  if (!res.ok) throw new Error(`AO3 returned ${res.status}`);
-  return res.text();
 }
 
 // Reads the open tab when we have one, so it costs AO3 nothing and sees what the user
@@ -38,9 +34,7 @@ async function readWork(target: Target): Promise<Ao3WorkInput | null> {
     const work = typeof frame?.result === 'string' ? parseAo3Work(frame.result, id) : null;
     if (work) return work;
   }
-  const work = parseAo3Work(await fetchWorkHtml(id), id);
-  if (!work) throw new Error('Could not read this work from AO3.');
-  return work;
+  return fetchAo3Work(id);
 }
 
 // Library works open from storage, without touching AO3. Viewing a tracked work from a
@@ -49,7 +43,7 @@ async function loadWork(target: Target): Promise<Ao3WorkInput | null> {
   const id = ao3WorkId(target.url);
   if (target.fromLibrary && id) return getAo3Work(id);
   const work = await readWork(target);
-  if (work && (await getAo3Work(work.id))) await saveAo3Work(work);
+  if (work) await refreshIfTracked(work);
   return work;
 }
 
@@ -84,7 +78,12 @@ function App() {
   return (
     <main class="panel">
       <header class="panel-header">
-        <h1>FandomGobbler (Fork)</h1>
+        <div class="panel-title">
+          <h1>FandomGobbler (Fork)</h1>
+          <button onClick={() => browser.tabs.create({ url: browser.runtime.getURL('/dashboard.html') })}>
+            Dashboard ↗
+          </button>
+        </div>
         <nav class="tabs" role="tablist">
           <button role="tab" aria-selected={tab() === 'work'} onClick={() => setTab('work')}>Work</button>
           <button role="tab" aria-selected={tab() === 'library'} onClick={() => setTab('library')}>
@@ -108,7 +107,7 @@ function App() {
             <p class="card muted">Loading…</p>
           </Match>
           <Match when={work.error}>
-            <p class="card error">{String(work.error)}</p>
+            <p class="card error">{(work.error as Error).message}</p>
           </Match>
           <Match when={work()}>
             {(w) => (

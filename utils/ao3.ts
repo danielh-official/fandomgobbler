@@ -1,4 +1,5 @@
 import type { Ao3WorkInput } from './library';
+import type { Ao3Work } from './models';
 
 export const AO3_ORIGIN = 'https://archiveofourown.org';
 
@@ -50,6 +51,8 @@ export function parseAo3Work(html: string, id: string): Ao3WorkInput | null {
   const [posted, total] = text(stat('chapters')).split('/');
   const chaptersPosted = parseInt(posted ?? '', 10) || null;
   const chaptersTotal = parseInt(total ?? '', 10) || null;
+  // Only on chapter-by-chapter pages; left out otherwise so stored ids aren't erased.
+  const chapterIds = [...doc.querySelectorAll('select#selected_id option')].map((o) => o.getAttribute('value') ?? '');
 
   // The "status" stat is labelled "Updated:" on works in progress and "Completed:" once done.
   const statusDate = parseAo3Date(text(stat('status')));
@@ -78,6 +81,7 @@ export function parseAo3Work(html: string, id: string): Ao3WorkInput | null {
     wordCount: count(stat('words')),
     chaptersPosted,
     chaptersTotal,
+    ...(chapterIds.length && chapterIds.every(Boolean) && { chapterIds }),
     kudosCount: count(stat('kudos')),
     bookmarksCount: count(stat('bookmarks')),
     hitsCount: count(stat('hits')),
@@ -90,4 +94,13 @@ export function parseAo3Work(html: string, id: string): Ao3WorkInput | null {
       ? /\/subscriptions\/\d+/.test(subscribeForm.getAttribute('action') ?? '')
       : null,
   };
+}
+
+// AO3 link to the work's current chapter (chapter 1 if none is set). Chapter URLs need
+// AO3's chapter id; without it, fall back to the full-work page at that chapter.
+export function ao3ChapterUrl(w: Pick<Ao3Work, 'id' | 'chapterIds' | 'furthestChapter'>): string {
+  const n = Math.max(1, w.furthestChapter?.num ?? 1);
+  const chapterId = w.chapterIds?.[n - 1];
+  if (chapterId) return `${ao3WorkUrl(w.id)}/chapters/${chapterId}`;
+  return n === 1 ? ao3WorkUrl(w.id) : `${ao3WorkUrl(w.id)}?view_full_work=true#chapter-${n}`;
 }

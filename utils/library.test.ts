@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, expect, test } from 'vitest';
 import { db } from './db';
-import { getAo3Work, removeAo3Work, saveAo3Work } from './library';
+import { getAo3Work, removeAo3Work, removeAo3Works, saveAo3Work, setAo3Statuses } from './library';
 
 const base = { id: '1', title: 'T', author: 'A', url: 'https://archiveofourown.org/works/1' };
 
@@ -33,5 +33,16 @@ test('a work without a status is not saved', async () => {
 test('removeAo3Work', async () => {
   await saveAo3Work({ ...base, status: 'want' });
   await removeAo3Work('1');
+  expect(await db.ao3Works.count()).toBe(0);
+});
+
+test('bulk status and remove', async () => {
+  await saveAo3Work({ ...base, id: '1', status: 'want' }, 100);
+  await saveAo3Work({ ...base, id: '2', status: 'completed' }, 100);
+  await setAo3Statuses(['1', '2', 'missing'], 'completed', 200);
+  expect(await getAo3Work('1')).toMatchObject({ status: 'completed', movedAt: 200, finishedAt: 200 });
+  expect(await getAo3Work('2')).toMatchObject({ movedAt: 100 });
+  expect(await getAo3Work('missing')).toBeNull();
+  await removeAo3Works(['1', '2']);
   expect(await db.ao3Works.count()).toBe(0);
 });
