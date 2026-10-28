@@ -130,8 +130,11 @@ function App() {
       <div class="grid gap-3.5" classList={{ hidden: !!detail() }}>
         <form class="flex gap-1.5" onSubmit={submitUrl}>
           <input class="flex-1" name="url" type="url" required placeholder="Paste an AO3 work URL" />
-          <button>Open</button>
+          <button>Add work</button>
         </form>
+
+        <hr class="my-1" />
+
         <LibraryView works={works()} current={current()} onOpen={(work) => open({ work })} />
       </div>
     </main>

@@ -10,7 +10,7 @@ import { formatDate, relativeDay } from '@/utils/time';
 import { WorkModal, type ModalState } from './WorkModal';
 import { createLibraryFilters } from '@/utils/library-filters';
 import { ChapterLink } from '@/components/ChapterLink';
-import { dangerButton, linkButton, pressed, primaryButton } from '@/components/ui';
+import { card, dangerButton, linkButton, pressed, primaryButton } from '@/components/ui';
 
 const PAGE_SIZE = 50;
 const COLUMN_LABELS = ['Work', 'Status', 'Progress', 'Words', 'Rating', 'Last updated', 'Read'];
@@ -134,41 +134,42 @@ function Dashboard() {
             </For>
           </select>
         </label>
-        <hr class="col-span-full my-1" />
-        <label class={fieldClass}>
-          <span>Fandom</span>
-          <select
-            class="text-sm text-text"
-            value={lib.filters().fandom}
-            onChange={(e) => lib.set({ fandom: e.currentTarget.value })}
-          >
-            <option value="">All fandoms</option>
-            <For each={lib.fandoms()}>
-              {([f, n]) => (
-                <option value={f}>
-                  {f} ({n})
-                </option>
-              )}
-            </For>
-          </select>
-        </label>
-        <label class={fieldClass}>
-          <span>Author</span>
-          <select
-            class="text-sm text-text"
-            value={lib.filters().author}
-            onChange={(e) => lib.set({ author: e.currentTarget.value })}
-          >
-            <option value="">All authors</option>
-            <For each={lib.authors()}>
-              {([a, n]) => (
-                <option value={a}>
-                  {a} ({n})
-                </option>
-              )}
-            </For>
-          </select>
-        </label>
+        <div class={`${card} col-span-full sm:grid-cols-2 md:grid-cols-1`}>
+          <label class={fieldClass}>
+            <span>Fandom</span>
+            <select
+              class="text-sm text-text"
+              value={lib.filters().fandom}
+              onChange={(e) => lib.set({ fandom: e.currentTarget.value })}
+            >
+              <option value="">All fandoms</option>
+              <For each={lib.fandoms()}>
+                {([f, n]) => (
+                  <option value={f}>
+                    {f} ({n})
+                  </option>
+                )}
+              </For>
+            </select>
+          </label>
+          <label class={fieldClass}>
+            <span>Author</span>
+            <select
+              class="text-sm text-text"
+              value={lib.filters().author}
+              onChange={(e) => lib.set({ author: e.currentTarget.value })}
+            >
+              <option value="">All authors</option>
+              <For each={lib.authors()}>
+                {([a, n]) => (
+                  <option value={a}>
+                    {a} ({n})
+                  </option>
+                )}
+              </For>
+            </select>
+          </label>
+        </div>
       </aside>
 
       <main class="grid min-w-0 content-start gap-2.5 [grid-area:main]">

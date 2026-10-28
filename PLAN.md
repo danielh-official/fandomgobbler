@@ -244,3 +244,6 @@ Status: `todo` · `in progress` · `awaiting test` · `done` · `deferred` · `d
 - 2026-10-28: 7c change request: filters shared between side panel and dashboard via localStorage (live sync), list/grid remembered, dashboard query params removed.
 - 2026-10-28: Filter order: Unread chapters only, Status, divider, Fandom + Author. Fandom/author options narrowed by status and unread only (`firstTier`).
 - 2026-10-28: Side panel filters in one column. 7c approved.
+- 2026-10-28: Fandom + Author filters grouped in a padded card (replacing the divider) in side panel and dashboard.
+- 2026-10-28: Side panel search moved below the filters.
+- 2026-10-28: Side panel filters in a collapsible <details> (closed by default, open state in localStorage); collapsed title shows the active filters.

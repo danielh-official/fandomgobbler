@@ -1,11 +1,22 @@
-import { For, Show } from 'solid-js';
+import { createEffect, createSignal, For, Show } from 'solid-js';
 import { ChapterLink } from '@/components/ChapterLink';
-import { linkButton, sectionHeading } from '@/components/ui';
+import { card, linkButton } from '@/components/ui';
 import type { Ao3WorkInput } from '@/utils/library';
 import { createLibraryFilters } from '@/utils/library-filters';
 import { isOngoing, lastUpdated, unreadChapters, type LibraryFilter } from '@/utils/library-view';
 import { STATUS_LABELS, STATUSES, type Ao3Work } from '@/utils/models';
 import { formatDate, relativeDay } from '@/utils/time';
+
+const FILTERS_OPEN_KEY = 'fg-sidepanel-filters-open';
+
+// Storage may be unavailable; collapsed is the default.
+function loadFiltersOpen(): boolean {
+  try {
+    return localStorage.getItem(FILTERS_OPEN_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
 
 // `current` is the work in the active tab: pinned first and highlighted, tracked or not,
 // and regardless of filters. `works` is undefined until the library has loaded.
@@ -17,18 +28,37 @@ export function LibraryView(props: {
   const lib = createLibraryFilters(() => props.works);
   const total = () => props.works?.length ?? 0;
 
+  // Collapsed by default; whether it's open is remembered for next time.
+  const [filtersOpen, setFiltersOpen] = createSignal(loadFiltersOpen());
+  createEffect(() => {
+    try {
+      localStorage.setItem(FILTERS_OPEN_KEY, String(filtersOpen()));
+    } catch {
+      // See loadFiltersOpen().
+    }
+  });
+  // Shown in the collapsed title so the active filters are visible without opening it.
+  const filterSummary = () => {
+    const f = lib.filters();
+    const parts = [
+      f.unreadOnly && 'Unread only',
+      f.status !== 'all' && STATUS_LABELS[f.status],
+      f.fandom,
+      f.author,
+    ].filter(Boolean);
+    return parts.length ? parts.join(' · ') : 'All works';
+  };
+
   return (
     <div class="grid gap-2">
-      <input
-        type="text"
-        placeholder="Search title, author, fandom, notes"
-        value={lib.query()}
-        onInput={(e) => lib.setQuery(e.currentTarget.value)}
-      />
-
-      <section>
-        <h2 class={sectionHeading}>Filters</h2>
-        <div class="grid gap-1.5">
+      <details open={filtersOpen()} onToggle={(e) => setFiltersOpen(e.currentTarget.open)}>
+        <summary class="cursor-pointer truncate py-0.5 font-semibold">
+          Filters
+          <Show when={!filtersOpen()}>
+            <span class="font-normal text-muted"> · {filterSummary()}</span>
+          </Show>
+        </summary>
+        <div class="mt-1.5 grid gap-1.5">
           <label class="flex items-center gap-2">
             <input
               type="checkbox"
@@ -52,37 +82,48 @@ export function LibraryView(props: {
               )}
             </For>
           </select>
-          <hr class="my-1" />
-          <select
-            value={lib.filters().fandom}
-            onChange={(e) => lib.set({ fandom: e.currentTarget.value })}
-            aria-label="Fandom"
-          >
-            <option value="">All fandoms</option>
-            <For each={lib.fandoms()}>
-              {([f, n]) => (
-                <option value={f}>
-                  {f} ({n})
-                </option>
-              )}
-            </For>
-          </select>
-          <select
-            value={lib.filters().author}
-            onChange={(e) => lib.set({ author: e.currentTarget.value })}
-            aria-label="Author"
-          >
-            <option value="">All authors</option>
-            <For each={lib.authors()}>
-              {([a, n]) => (
-                <option value={a}>
-                  {a} ({n})
-                </option>
-              )}
-            </For>
-          </select>
+
+          <div class={card}>
+            <select
+              value={lib.filters().fandom}
+              onChange={(e) => lib.set({ fandom: e.currentTarget.value })}
+              aria-label="Fandom"
+            >
+              <option value="">All fandoms</option>
+              <For each={lib.fandoms()}>
+                {([f, n]) => (
+                  <option value={f}>
+                    {f} ({n})
+                  </option>
+                )}
+              </For>
+            </select>
+            <select
+              value={lib.filters().author}
+              onChange={(e) => lib.set({ author: e.currentTarget.value })}
+              aria-label="Author"
+            >
+              <option value="">All authors</option>
+              <For each={lib.authors()}>
+                {([a, n]) => (
+                  <option value={a}>
+                    {a} ({n})
+                  </option>
+                )}
+              </For>
+            </select>
+          </div>
         </div>
-      </section>
+      </details>
+
+      <hr class="my-1" />
+
+      <input
+        type="text"
+        placeholder="Search title, author, fandom, notes"
+        value={lib.query()}
+        onInput={(e) => lib.setQuery(e.currentTarget.value)}
+      />
 
       <Show when={lib.active()}>
         <p class="text-xs text-muted">
