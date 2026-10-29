@@ -4,7 +4,7 @@ import { createResource, createSignal, For, from, Show } from 'solid-js';
 import { render } from 'solid-js/web';
 import { browser } from 'wxt/browser';
 import { card, linkButton, primaryButton } from '@/components/ui';
-import { readTabWork } from '@/utils/ao3-tab';
+import { readTabWork } from '@/utils/tab';
 import { readLibrary, saveWork, type WorkInput } from '@/utils/library';
 import { PICKABLE_STATUSES, STATUS_LABELS, workKey, type Status } from '@/utils/models';
 import { setTrackedBadge } from '@/utils/badge';

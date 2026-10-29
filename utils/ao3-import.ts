@@ -1,5 +1,5 @@
 import { AO3_ORIGIN, looksRateLimited, parseAo3ListingPage, parseAo3Username } from './ao3';
-import { PlatformUnresponsiveError } from './health';
+import { defaultFetch, fetchPaced, wait, type Fetch, type Wait } from './paced-fetch';
 import { addWorksIfMissing } from './library';
 import type { Status } from './models';
 
@@ -23,8 +23,6 @@ export const IMPORT_SOURCES = {
 export type ImportSource = keyof typeof IMPORT_SOURCES;
 
 export const PAGE_DELAY_MS = 3000;
-export const BACKOFF_MS = [15000, 30000];
-export const FETCH_TIMEOUT_MS = 20000;
 
 export interface ImportProgress {
   page: number;
@@ -35,18 +33,6 @@ export interface ImportProgress {
   retryingInMs?: number;
 }
 
-export type Fetch = (url: string, init: RequestInit) => Promise<Response>;
-export type Wait = (ms: number, signal?: AbortSignal) => Promise<void>;
-
-export const wait: Wait = (ms, signal) =>
-  new Promise((resolve, reject) => {
-    const timer = setTimeout(resolve, ms);
-    signal?.addEventListener('abort', () => {
-      clearTimeout(timer);
-      reject(signal.reason);
-    });
-  });
-
 // One request to AO3's front page for the logged-in user's name.
 export async function detectAo3Username(fetchFn: Fetch = fetch): Promise<string> {
   const res = await fetchFn(`${AO3_ORIGIN}/`, { credentials: 'include' });
@@ -54,38 +40,6 @@ export async function detectAo3Username(fetchFn: Fetch = fetch): Promise<string>
   if (!name) throw new Error('You don’t seem to be logged in to AO3 in this browser. Log in, or type your username.');
   return name;
 }
-
-// One AO3 request, retried after a long wait when AO3 rate-limits it. Other statuses
-// are returned for the caller to judge (a 404 means something to the deleted-work check).
-export async function fetchAo3Paced(
-  url: string,
-  opts: {
-    fetchFn: Fetch;
-    sleep: Wait;
-    signal?: AbortSignal;
-    onWait: (ms: number) => void;
-    // The background refresh passes [] and leaves waiting to the health checks.
-    backoffs?: number[];
-  },
-): Promise<{ status: number; html: string }> {
-  for (const backoff of [0, ...(opts.backoffs ?? BACKOFF_MS)]) {
-    if (backoff) {
-      opts.onWait(backoff);
-      await opts.sleep(backoff, opts.signal);
-    }
-    // A hung request counts as no answer (a TimeoutError), not as waiting forever.
-    const timeout = AbortSignal.timeout(FETCH_TIMEOUT_MS);
-    const signal = opts.signal ? AbortSignal.any([opts.signal, timeout]) : timeout;
-    const res = await opts.fetchFn(url, { credentials: 'include', signal });
-    if (res.status === 429) continue;
-    const html = await res.text();
-    if (!res.ok || !looksRateLimited(html)) return { status: res.status, html };
-  }
-  throw new PlatformUnresponsiveError('AO3 is rate-limiting requests. Progress so far is saved; try again later.');
-}
-
-// Wrapped: native fetch throws "Illegal invocation" when called as a method of another object.
-export const defaultFetch: Fetch = (url, init) => fetch(url, init);
 
 export async function runImport(opts: {
   source: ImportSource;
@@ -103,11 +57,12 @@ export async function runImport(opts: {
   for (let page = 1; ; page++) {
     progress.page = page;
     report();
-    const { status, html } = await fetchAo3Paced(IMPORT_SOURCES[opts.source].url(opts.username, page), {
+    const { status, html } = await fetchPaced(IMPORT_SOURCES[opts.source].url(opts.username, page), {
       fetchFn,
       sleep,
       signal,
       onWait: (ms) => opts.onProgress?.({ ...progress, retryingInMs: ms }),
+      rateLimited: looksRateLimited,
     });
     if (status !== 200) throw new Error(`AO3 returned ${status}.`);
     const { works, hasNext, lastPage } = parseAo3ListingPage(html);

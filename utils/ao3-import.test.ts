@@ -1,7 +1,8 @@
 // @vitest-environment happy-dom
 import 'fake-indexeddb/auto';
 import { beforeEach, expect, test } from 'vitest';
-import { BACKOFF_MS, PAGE_DELAY_MS, runImport, type ImportProgress } from './ao3-import';
+import { PAGE_DELAY_MS, runImport, type ImportProgress } from './ao3-import';
+import { BACKOFF_MS } from './paced-fetch';
 import { db } from './db';
 import bookmarksPage from './fixtures/ao3-bookmarks-page.html?raw';
 import readingsLastPage from './fixtures/ao3-readings-last-page.html?raw';

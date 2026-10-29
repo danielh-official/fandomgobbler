@@ -3,25 +3,17 @@ import { liveQuery } from 'dexie';
 import { createResource, createSignal, from, Match, onCleanup, Show, Switch } from 'solid-js';
 import { render } from 'solid-js/web';
 import { browser } from 'wxt/browser';
+import { SiteAccess } from '@/components/SiteAccess';
 import { ThemePicker } from '@/components/ThemePicker';
 import { card, linkButton } from '@/components/ui';
 import { WorkView } from '@/components/WorkView';
-import { ao3WorkId } from '@/utils/ao3';
-import { fetchAo3Work, refreshIfTracked } from '@/utils/ao3-fetch';
 import { readLibrary, type WorkInput } from '@/utils/library';
 import { workKey } from '@/utils/models';
 import { applySavedTheme } from '@/utils/theme';
-import { readTabWork } from '@/utils/ao3-tab';
+import { SUPPORTED_HINT } from '@/utils/platforms';
+import { readTabWork } from '@/utils/tab';
+import { readWorkUrl } from '@/utils/work-fetch';
 import { LibraryView } from './LibraryView';
-
-// One fetch for a URL the user pasted.
-async function readUrlWork(url: string): Promise<WorkInput> {
-  const id = ao3WorkId(url);
-  if (!id) throw new Error('That isn’t an AO3 work URL.');
-  const work = await fetchAo3Work(id);
-  await refreshIfTracked(work);
-  return work;
-}
 
 // What the detail view shows: a work already in hand (library or current tab), or a
 // pasted URL still to be fetched.
@@ -35,7 +27,7 @@ function App() {
   const [tab, setTab] = createSignal<{ url: string; id: number } | null>(null);
   const followTab = async () => {
     const [t] = await browser.tabs.query({ active: true, currentWindow: true });
-    // t.url is only visible for sites we have host access to, i.e. AO3.
+    // t.url is only visible for sites we have host access to, i.e. supported platforms.
     setTab(t?.url && t.id !== undefined ? { url: t.url, id: t.id } : null);
   };
   followTab();
@@ -50,7 +42,7 @@ function App() {
     browser.tabs.onActivated.removeListener(onActivated);
     browser.tabs.onUpdated.removeListener(onUpdated);
   });
-  // A failed read (e.g. AO3 down) just means no pinned card; reading an errored
+  // A failed read (e.g. the site is down) just means no pinned card; reading an errored
   // resource would throw.
   const [current] = createResource(tab, (t) => readTabWork(t).catch(() => null));
 
@@ -69,7 +61,7 @@ function App() {
   const [urlWork] = createResource(() => {
     const d = detail();
     return d && 'url' in d ? d.url : null;
-  }, readUrlWork);
+  }, readWorkUrl);
   const detailWork = () => {
     const d = detail();
     if (d && 'work' in d) return d.work;
@@ -95,6 +87,8 @@ function App() {
         </div>
       </header>
 
+      <SiteAccess />
+
       <Show when={detail()}>
         <nav class="flex min-w-0 items-baseline gap-1.5 text-xs" aria-label="Breadcrumb">
           <button class={linkButton} onClick={back}>
@@ -109,7 +103,7 @@ function App() {
         </nav>
         <Switch>
           <Match when={urlWork.loading}>
-            <p class={`${card} text-muted`}>Loading from AO3…</p>
+            <p class={`${card} text-muted`}>Loading…</p>
           </Match>
           <Match when={urlWork.error}>
             <p class={`${card} text-danger`}>{(urlWork.error as Error).message}</p>
@@ -119,9 +113,12 @@ function App() {
       </Show>
 
       <div class="grid gap-3.5" classList={{ hidden: !!detail() }}>
-        <form class="flex gap-1.5" onSubmit={submitUrl}>
-          <input class="flex-1" name="url" type="url" required placeholder="Paste an AO3 work URL" />
-          <button>Add work</button>
+        <form class="grid gap-1" onSubmit={submitUrl}>
+          <div class="flex gap-1.5">
+            <input class="flex-1" name="url" type="url" required placeholder="Paste a work url" />
+            <button>Add work</button>
+          </div>
+          <p class="text-xs text-muted">{SUPPORTED_HINT}</p>
         </form>
 
         <hr class="my-1" />

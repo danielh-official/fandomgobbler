@@ -1,12 +1,14 @@
 // @vitest-environment happy-dom
 import 'fake-indexeddb/auto';
 import { beforeEach, expect, test } from 'vitest';
-import { DUE_AFTER, pickDue, REFRESH_DELAY_MS, runRefresh } from './ao3-refresh';
+import { DUE_AFTER, pickDue, REFRESH_DELAY_MS, runRefresh } from './refresh';
 import type { Work } from './models';
-import { BACKOFF_MS } from './ao3-import';
+import { BACKOFF_MS } from './paced-fetch';
 import { PlatformUnresponsiveError } from './health';
 import { db } from './db';
 import oneshot from './fixtures/ao3-work-oneshot.html?raw';
+import ffnetComplete from './fixtures/ffnet-story-complete.html?raw';
+import ffnetNotFound from './fixtures/ffnet-not-found.html?raw';
 import { saveWork } from './library';
 
 beforeEach(async () => {
@@ -17,6 +19,9 @@ beforeEach(async () => {
       100,
     );
 });
+
+// AO3's 404 page still has its site header.
+const AO3_PAGE = '<header id="header"></header>';
 
 function fakeAo3(responses: { status?: number; body?: string }[]) {
   const urls: string[] = [];
@@ -38,11 +43,18 @@ function fakeAo3(responses: { status?: number; body?: string }[]) {
 
 test('marks 404s deleted, refreshes works that load, leaves unreadable ones alone', async () => {
   const ao3 = fakeAo3([
-    { status: 404 },
+    { status: 404, body: AO3_PAGE },
     { body: oneshot },
     { body: '<header id="header"></header><p>Restricted: log in</p>' },
   ]);
-  const result = await runRefresh({ ids: ['1', '2', '3'], ...ao3 });
+  const result = await runRefresh({
+    refs: [
+      { platform: 'ao3', id: '1' },
+      { platform: 'ao3', id: '2' },
+      { platform: 'ao3', id: '3' },
+    ],
+    ...ao3,
+  });
 
   expect(ao3.urls[0]).toBe('https://archiveofourown.org/works/1?view_adult=true');
   expect(ao3.waits).toEqual([REFRESH_DELAY_MS, REFRESH_DELAY_MS]);
@@ -62,16 +74,27 @@ test('marks 404s deleted, refreshes works that load, leaves unreadable ones alon
 });
 
 test('a work already marked deleted keeps its original lostFrom', async () => {
-  await runRefresh({ ids: ['1'], ...fakeAo3([{ status: 404 }]) });
-  const again = await runRefresh({ ids: ['1'], ...fakeAo3([{ status: 404 }]) });
+  await runRefresh({ refs: [{ platform: 'ao3', id: '1' }], ...fakeAo3([{ status: 404, body: AO3_PAGE }]) });
+  const again = await runRefresh({
+    refs: [{ platform: 'ao3', id: '1' }],
+    ...fakeAo3([{ status: 404, body: AO3_PAGE }]),
+  });
   expect(again.lost).toBe(0);
   expect(await db.works.get(['ao3', '1'])).toMatchObject({ status: 'lost', lostFrom: 'progress' });
 });
 
 test('backs off on a rate limit, and gives up keeping what was checked', async () => {
   const limited = { status: 429 };
-  const ao3 = fakeAo3([{ status: 404 }, limited, limited, limited]);
-  await expect(runRefresh({ ids: ['1', '2'], ...ao3 })).rejects.toThrow(/rate-limiting/);
+  const ao3 = fakeAo3([{ status: 404, body: AO3_PAGE }, limited, limited, limited]);
+  await expect(
+    runRefresh({
+      refs: [
+        { platform: 'ao3', id: '1' },
+        { platform: 'ao3', id: '2' },
+      ],
+      ...ao3,
+    }),
+  ).rejects.toThrow(/rate-limiting/);
   expect(ao3.waits).toEqual([REFRESH_DELAY_MS, ...BACKOFF_MS]);
   expect((await db.works.get(['ao3', '1']))?.status).toBe('lost');
 });
@@ -101,8 +124,43 @@ test('picks the most overdue works, completed ones far less often, never deleted
 
 test('an unresponsive AO3 throws without marking anything refreshed', async () => {
   for (const response of [{ status: 503 }, { body: '<h1>Down for maintenance</h1>' }]) {
-    const err = await runRefresh({ ids: ['1'], backoffs: [], ...fakeAo3([response]) }).catch((e) => e);
+    const err = await runRefresh({ refs: [{ platform: 'ao3', id: '1' }], backoffs: [], ...fakeAo3([response]) }).catch(
+      (e) => e,
+    );
     expect(err).toBeInstanceOf(PlatformUnresponsiveError);
   }
   expect((await db.works.get(['ao3', '1']))?.refreshedAt).toBeUndefined();
+});
+
+test('FanFiction.net: refreshes, marks "Story Not Found" deleted, and treats a Cloudflare check as unresponsive', async () => {
+  const story = (id: string) => ({
+    platform: 'ffnet' as const,
+    id,
+    title: 'Old',
+    author: 'a',
+    url: 'u',
+    status: 'progress' as const,
+  });
+  await saveWork(story('5782108'));
+  await saveWork(story('2'));
+  const ao3 = fakeAo3([{ body: ffnetComplete }, { body: ffnetNotFound }]);
+  const result = await runRefresh({
+    refs: [
+      { platform: 'ffnet', id: '5782108' },
+      { platform: 'ffnet', id: '2' },
+    ],
+    ...ao3,
+  });
+  expect(ao3.urls[0]).toBe('https://www.fanfiction.net/s/5782108/1/');
+  expect(result).toMatchObject({ checked: 2, lost: 1, newChapters: 1 });
+  expect(await db.works.get(['ffnet', '5782108'])).toMatchObject({ title: 'A Finished Story', chaptersPosted: 122 });
+  expect(await db.works.get(['ffnet', '2'])).toMatchObject({ status: 'lost', lostFrom: 'progress' });
+
+  const challenge = { status: 403, body: '<html><head><title>Just a moment...</title></head></html>' };
+  const err = await runRefresh({
+    refs: [{ platform: 'ffnet', id: '5782108' }],
+    backoffs: [],
+    ...fakeAo3([challenge]),
+  }).catch((e) => e);
+  expect(err).toBeInstanceOf(PlatformUnresponsiveError);
 });

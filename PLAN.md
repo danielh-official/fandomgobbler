@@ -83,7 +83,7 @@ Status: `todo` · `in progress` · `awaiting test` · `done` · `deferred` · `d
 | 10  | Background refresh from AO3 (interval, rate-limited)            | done     |
 | 11  | Extension theme: system, light, dark (done before M10)          | done     |
 | 12  | Multi-platform library + platform filter                        | done     |
-| 13  | FanFiction.net                                                  | todo     |
+| 13  | FanFiction.net                                                  | done     |
 | 14  | Wattpad                                                         | todo     |
 
 ### 1. Scaffold
@@ -249,10 +249,25 @@ other platforms come first.
 
 ### 13. FanFiction.net
 
-- `ffnetWorks` table and parser (story page stats line: chapters, words, dates, status).
-- Add from the open tab (side panel, toolbar menu, right-click), chapter links, ✓ badge.
-- FF.net sits behind Cloudflare, so extension fetches are likely blocked: reading the
-  open tab is the main path; whether background refresh can work is checked live first.
+- `utils/ffnet.ts`: story id from `/s/<id>` URLs (www. and m.), parser for the story
+  header every chapter page repeats (title, author, summary, fandoms from the breadcrumb
+  incl. "X + Y Crossover", genres, characters, words, chapters, reviews/favs/follows,
+  exact dates from `data-xutime`, Complete status). No planned chapter total on FF.net:
+  the total is only set once complete. Chapter links are numbered (`/s/<id>/<n>/`).
+- Checked live (2026-10-29): plain requests get Cloudflare's 403 "Just a moment" page;
+  from a browser that passed the check, same-site fetches work. A deleted story is a 200
+  page with "Story Not Found". Real pages have the `zmenu` bar.
+- `utils/sites.ts`: one `Site` per platform (URL patterns, fetch URL, parser, chapter
+  link, deleted/blocked detection). Shared code goes through it: `work-fetch.ts`
+  (paste a URL, refresh on view), `tab.ts` (read the open tab), `refresh.ts` (background
+  refresh, per platform), `paced-fetch.ts`, the right-click menu, ✓ badge, chapter
+  links. AO3 import stays AO3-only.
+- Reading the open tab is the reliable path. Pasting a URL and background refresh fetch
+  with the browser's cookies, so they work while the Cloudflare check is passed; when
+  blocked, pasting says to open the work in a tab, and the background treats FF.net as
+  unresponsive (health checks back off).
+- m.fanfiction.net: pasted links work (fetched from www.), but its tabs aren't read (no
+  host access; mobile markup differs).
 
 ### 14. Wattpad
 
@@ -326,3 +341,6 @@ other platforms come first.
 - 2026-10-29: AO3 outage (2+ weeks expected) raises other platforms' priority. New order: M12 multi-platform library with a platform checkbox filter (all on by default), M13 FanFiction.net, M14 Wattpad. Tables stay per platform; the list merges them in the view.
 - 2026-10-29: M12 built: merged library (`LibraryWork`, `workKey`), platform checkbox filter, per-platform health checks for the background refresh. Background refresh card removed from the dashboard at the user's request (refresh always on).
 - 2026-10-29: Storage made platform-neutral at the user's request: one `works` table keyed by `[platform+id]` (v3 migrates `ao3Works`, v4 drops it), `Ao3Work` → `Work` with a stored `platform`, generic library functions. AO3-specific code stays in `utils/ao3*.ts`; shared screens still only read AO3 tabs and URLs until M13.
+- 2026-10-29: M13 built: FanFiction.net parser, site registry (`utils/sites.ts`) with generic fetch, tab reading, refresh and paced fetch; right-click, ✓ badge, chapter links, paste-a-URL and background refresh work per platform. New host permission for www.fanfiction.net.
+- 2026-10-29: M13 test: Chrome withheld the new FanFiction.net host permission after the update ("Failed to fetch"). Added `components/SiteAccess.tsx`: side panel and dashboard show "No access to <platform>" with an Allow access button (`permissions.request`); pasted-URL network errors now say whether access is missing.
+- 2026-10-29: M13 done. Platform shown in the dashboard (list column, grid card) and side panel cards; paste fields read "Paste a work url" with a "Supported: ..." hint built from `PLATFORMS`.

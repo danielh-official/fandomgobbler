@@ -60,6 +60,12 @@ export interface Work {
   inferredCompletedAt?: number | null;
   // AO3 only.
   subscribedAtAo3?: boolean | null;
+  // FanFiction.net only.
+  genres?: string;
+  characters?: string;
+  reviewsCount?: number | null;
+  favoritesCount?: number | null;
+  followsCount?: number | null;
   furthestChapter?: ChapterProgress;
   // Set by the user while on the last posted chapter without having finished it.
   // Cleared whenever the current chapter changes.

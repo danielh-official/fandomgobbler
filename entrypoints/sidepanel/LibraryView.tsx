@@ -173,7 +173,9 @@ function WorkCard(props: { work: WorkInput; tracked?: Work; current?: boolean; o
       <button class={linkButton} onClick={() => props.onOpen()}>
         {w().title}
       </button>
-      <div class="text-xs text-muted">by {w().author}</div>
+      <div class="text-xs text-muted">
+        by {w().author} · {PLATFORMS[w().platform].label}
+      </div>
       <div class="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs">
         <span classList={{ 'text-muted': !props.tracked }}>
           {props.tracked ? STATUS_LABELS[props.tracked.status] : 'Not in your library'}

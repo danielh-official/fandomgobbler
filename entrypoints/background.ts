@@ -1,18 +1,19 @@
 import { browser } from 'wxt/browser';
 import { defineBackground } from 'wxt/utils/define-background';
 import { liveQuery } from 'dexie';
-import { ao3WorkId } from '@/utils/ao3';
 import { setTrackedBadge } from '@/utils/badge';
 import { db } from '@/utils/db';
 import { PICKABLE_STATUSES, STATUS_LABELS, type Status } from '@/utils/models';
 import { isUnresponsiveStatus, isWaiting, recordFailure } from '@/utils/health';
-import { PLATFORMS, type Platform } from '@/utils/platforms';
+import { PLATFORM_IDS, PLATFORMS, type Platform } from '@/utils/platforms';
+import { SITES, workRefFromUrl } from '@/utils/sites';
 import { loadHealth, REFRESH_BATCH, REFRESH_EVERY_MIN, saveHealth } from '@/utils/refresh-settings';
 import type { AddWorkMessage, AddWorkResponse, RefreshDueMessage, RefreshDueResponse } from './offscreen/main';
 
 const MENU = 'add-work';
 const REFRESH_ALARM = 'refresh';
-const WORK_PAGES = ['https://archiveofourown.org/works/*', 'https://archiveofourown.org/collections/*/works/*'];
+const WORK_PAGES = PLATFORM_IDS.flatMap((p) => SITES[p].workPages);
+const SITE_PAGES = PLATFORM_IDS.flatMap((p) => SITES[p].sitePages);
 
 // The background can't parse HTML, so the page is handed to the offscreen document.
 let creating: Promise<void> | undefined;
@@ -24,19 +25,23 @@ async function ensureOffscreen() {
   });
   if (open.length) return;
   creating ??= browser.offscreen
-    .createDocument({ url, reasons: [browser.offscreen.Reason.DOM_PARSER], justification: 'Read AO3 work pages' })
+    .createDocument({
+      url,
+      reasons: [browser.offscreen.Reason.DOM_PARSER],
+      justification: 'Read fanfiction work pages',
+    })
     .finally(() => (creating = undefined));
   await creating;
 }
 
 async function updateBadge(tabId: number, url: string | undefined) {
-  const id = url ? ao3WorkId(url) : null;
-  await setTrackedBadge(tabId, !!id && !!(await db.works.get(['ao3', id])));
+  const ref = url ? workRefFromUrl(url) : null;
+  await setTrackedBadge(tabId, !!ref && !!(await db.works.get([ref.platform, ref.id])));
 }
 
-// Every open AO3 tab; their URLs are visible thanks to the AO3 host permission.
+// Every open tab on a supported site; their URLs are visible thanks to the host permissions.
 async function updateAllBadges() {
-  for (const t of await browser.tabs.query({ url: 'https://archiveofourown.org/*' })) {
+  for (const t of await browser.tabs.query({ url: SITE_PAGES })) {
     if (t.id !== undefined) await updateBadge(t.id, t.url);
   }
 }
@@ -74,13 +79,14 @@ async function ensureRefreshAlarm() {
 }
 
 // Platforms with a background refresh. Each is paused on its own while it's unresponsive.
-const REFRESHED: Platform[] = ['ao3'];
+const REFRESHED: Platform[] = PLATFORM_IDS;
 
-// One request to the platform's home page: does it answer at all?
+// One request to the platform's home page: does it answer with its real site? Cookies
+// are sent so a passed bot check (FanFiction.net's Cloudflare) counts.
 async function healthCheck(platform: Platform): Promise<boolean> {
   try {
-    const res = await fetch(PLATFORMS[platform].home, { signal: AbortSignal.timeout(20000) });
-    return !isUnresponsiveStatus(res.status);
+    const res = await fetch(PLATFORMS[platform].home, { credentials: 'include', signal: AbortSignal.timeout(20000) });
+    return !isUnresponsiveStatus(res.status) && SITES[platform].looksLikeSite(await res.text());
   } catch {
     return false;
   }
@@ -100,7 +106,7 @@ async function refreshInBackground() {
     }
     try {
       await ensureOffscreen();
-      const msg: RefreshDueMessage = { type: 'refresh-due', count: REFRESH_BATCH };
+      const msg: RefreshDueMessage = { type: 'refresh-due', platform, count: REFRESH_BATCH };
       const res: RefreshDueResponse = await browser.runtime.sendMessage(msg);
       if (!('error' in res)) delete health[platform];
       else if (res.unresponsive) health[platform] = recordFailure(h, res.error, now);
@@ -121,14 +127,14 @@ export default defineBackground(() => {
   browser.alarms.onAlarm.addListener((alarm) => alarm.name === REFRESH_ALARM && refreshInBackground());
 
   // ✓ badge on tabs showing a tracked work. Chrome clears tab badges on navigation, so
-  // each page load sets it again; library changes made elsewhere update all AO3 tabs
+  // each page load sets it again; library changes made elsewhere update all site tabs
   // (while this worker is awake; otherwise the next page load catches up).
   browser.tabs.onUpdated.addListener((tabId, change, tab) => {
     if (change.url || change.status === 'complete') updateBadge(tabId, tab.url);
   });
   liveQuery(() => db.works.toCollection().primaryKeys()).subscribe(() => updateAllBadges());
 
-  // Right-click on an AO3 work page: "Add to library" › status.
+  // Right-click on a work page: "Add to library" › status.
   browser.runtime.onInstalled.addListener(() => {
     browser.contextMenus.create({
       id: MENU,

@@ -10,12 +10,14 @@ import { WorkModal, type ModalState } from './WorkModal';
 import { createLibraryFilters } from '@/utils/library-filters';
 import { ChapterLink } from '@/components/ChapterLink';
 import { PlatformFilter } from '@/components/PlatformFilter';
+import { SiteAccess } from '@/components/SiteAccess';
 import { ThemePicker } from '@/components/ThemePicker';
 import { card, dangerButton, linkButton, pressed, primaryButton } from '@/components/ui';
+import { PLATFORMS } from '@/utils/platforms';
 import { applySavedTheme } from '@/utils/theme';
 
 const PAGE_SIZE = 50;
-const COLUMN_LABELS = ['Work', 'Status', 'Progress', 'Words', 'Rating', 'Last updated', 'Read'];
+const COLUMN_LABELS = ['Work', 'Platform', 'Status', 'Progress', 'Words', 'Rating', 'Last updated', 'Read'];
 
 const VIEW_KEY = 'fg-dashboard-view';
 
@@ -119,6 +121,9 @@ function Dashboard() {
         </button>
         <button onClick={() => setModal({ kind: 'import' })}>Import from AO3</button>
         <ThemePicker class="ml-auto" />
+        <div class="basis-full empty:hidden">
+          <SiteAccess />
+        </div>
       </header>
 
       <aside
@@ -290,7 +295,7 @@ const fieldClass = 'grid gap-1 text-xs text-muted';
 // Table columns on wide rows; on rows narrower than 820px (small screens, grid cards)
 // the same cells become a card: checkbox beside the title, details wrapping below.
 const rowGrid =
-  'grid grid-cols-[20px_minmax(0,1fr)_110px_190px_80px_70px_190px_60px] items-center gap-3 px-3.5 py-2.5 @max-[820px]:grid-cols-[20px_minmax(0,1fr)] @max-[820px]:gap-y-1.5';
+  'grid grid-cols-[20px_minmax(0,1fr)_100px_110px_190px_80px_70px_190px_60px] items-center gap-3 px-3.5 py-2.5 @max-[820px]:grid-cols-[20px_minmax(0,1fr)] @max-[820px]:gap-y-1.5';
 
 // Placeholder for an empty cell; card layout hides cells that only hold one.
 const Empty = () => (
@@ -328,6 +333,7 @@ function Row(props: { work: Work; grid: boolean; selected: boolean; onToggle: ()
         </div>
         {/* On wide rows this wrapper disappears and its cells become table columns. */}
         <div class="contents @max-[820px]:col-start-2 @max-[820px]:flex @max-[820px]:flex-wrap @max-[820px]:gap-x-3.5 @max-[820px]:gap-y-1 @max-[820px]:[&>span:has(>[data-empty])]:hidden">
+          <span class="text-xs text-muted">{PLATFORMS[w().platform].label}</span>
           <span class="@max-[820px]:text-xs @max-[820px]:font-semibold">{STATUS_LABELS[w().status]}</span>
           <span class="text-xs">
             <Show when={w().chaptersPosted != null} fallback={<Empty />}>

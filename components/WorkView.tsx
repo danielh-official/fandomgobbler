@@ -30,6 +30,9 @@ export function WorkView(props: { work: WorkInput; tracked?: Work }) {
       ['Kudos', num(w().kudosCount)],
       ['Bookmarks', num(w().bookmarksCount)],
       ['Hits', num(w().hitsCount)],
+      ['Reviews', num(w().reviewsCount)],
+      ['Favs', num(w().favoritesCount)],
+      ['Follows', num(w().followsCount)],
       ['Published', day(w().publishedAt)],
       ['Updated', day(w().updatedAt)],
       ['Completed', day(w().completedAt)],
@@ -53,11 +56,17 @@ export function WorkView(props: { work: WorkInput; tracked?: Work }) {
         </div>
       </div>
 
-      <Show when={w().fandoms?.length || w().relationship || w().seriesTitle}>
+      <Show when={w().fandoms?.length || w().relationship || w().characters || w().genres || w().seriesTitle}>
         <div class="flex flex-wrap gap-x-2.5 gap-y-1 text-[13px]">
           <For each={w().fandoms}>{(f) => <span>{f}</span>}</For>
           <Show when={w().relationship}>
             <span class="text-muted">{w().relationship}</span>
+          </Show>
+          <Show when={w().characters}>
+            <span class="text-muted">{w().characters}</span>
+          </Show>
+          <Show when={w().genres}>
+            <span class="text-muted">{w().genres}</span>
           </Show>
           <Show when={w().seriesUrl}>
             {(url) => (

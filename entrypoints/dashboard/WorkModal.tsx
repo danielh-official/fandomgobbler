@@ -1,7 +1,7 @@
 import { createEffect, createResource, createSignal, Match, Show, Switch } from 'solid-js';
 import { WorkView } from '@/components/WorkView';
-import { ao3WorkId } from '@/utils/ao3';
-import { fetchAo3Work, refreshIfTracked } from '@/utils/ao3-fetch';
+import { SUPPORTED_HINT } from '@/utils/platforms';
+import { readWorkUrl } from '@/utils/work-fetch';
 import { workKey, type Work } from '@/utils/models';
 import { ImportFromAo3 } from './ImportFromAo3';
 
@@ -54,31 +54,28 @@ export function WorkModal(props: { state: ModalState; library: Work[]; onClose: 
 // Fetches the one work the user pasted, then shows it so they can pick a status.
 function AddWork(props: { library: Work[] }) {
   const [url, setUrl] = createSignal<string | null>(null);
-  const [work] = createResource(url, async (u) => {
-    const id = ao3WorkId(u);
-    if (!id) throw new Error('That isn’t an AO3 work URL.');
-    const w = await fetchAo3Work(id);
-    await refreshIfTracked(w);
-    return w;
-  });
+  const [work] = createResource(url, readWorkUrl);
 
   return (
     <div class="grid gap-3">
       <h2 class="text-base font-bold">Add a work</h2>
       <form
-        class="flex gap-1.5"
+        class="grid gap-1"
         onSubmit={(e) => {
           e.preventDefault();
           const input = e.currentTarget.elements.namedItem('url') as HTMLInputElement;
           setUrl(input.value.trim());
         }}
       >
-        <input class="flex-1" name="url" type="url" required autofocus placeholder="Paste an AO3 work URL" />
-        <button disabled={work.loading}>Look up</button>
+        <div class="flex gap-1.5">
+          <input class="flex-1" name="url" type="url" required autofocus placeholder="Paste a work url" />
+          <button disabled={work.loading}>Look up</button>
+        </div>
+        <p class="text-xs text-muted">{SUPPORTED_HINT}</p>
       </form>
       <Switch>
         <Match when={work.loading}>
-          <p class="text-muted">Loading from AO3…</p>
+          <p class="text-muted">Loading…</p>
         </Match>
         <Match when={work.error}>
           <p class="text-danger">{(work.error as Error).message}</p>
