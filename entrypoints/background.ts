@@ -48,8 +48,9 @@ async function updateAllBadges() {
 
 // A failed add shows "!" for a few seconds, then the tab's usual badge.
 function flashError(tabId: number, url: string) {
-  browser.action.setBadgeBackgroundColor({ tabId, color: '#b42318' });
-  browser.action.setBadgeText({ tabId, text: '!' });
+  // Ignored when the tab is gone, as in setTrackedBadge.
+  browser.action.setBadgeBackgroundColor({ tabId, color: '#b42318' }).catch(() => {});
+  browser.action.setBadgeText({ tabId, text: '!' }).catch(() => {});
   setTimeout(() => updateBadge(tabId, url), 4000);
 }
 
