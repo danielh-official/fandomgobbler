@@ -2,15 +2,14 @@ import '@/assets/app.css';
 import { liveQuery } from 'dexie';
 import { createEffect, createSignal, For, from, on, Show } from 'solid-js';
 import { render } from 'solid-js/web';
-import { db } from '@/utils/db';
-import { removeAo3Works, setAo3Statuses } from '@/utils/library';
+import { readLibrary, removeWorks, setStatuses } from '@/utils/library';
 import { isOngoing, lastUpdated, unreadChapters, type LibraryFilter } from '@/utils/library-view';
-import { STATUS_LABELS, STATUSES, type Ao3Work, type Status } from '@/utils/models';
+import { STATUS_LABELS, STATUSES, workKey, type Work, type Status } from '@/utils/models';
 import { formatDate, relativeDay } from '@/utils/time';
-import { BackgroundRefresh } from './BackgroundRefresh';
 import { WorkModal, type ModalState } from './WorkModal';
 import { createLibraryFilters } from '@/utils/library-filters';
 import { ChapterLink } from '@/components/ChapterLink';
+import { PlatformFilter } from '@/components/PlatformFilter';
 import { ThemePicker } from '@/components/ThemePicker';
 import { card, dangerButton, linkButton, pressed, primaryButton } from '@/components/ui';
 import { applySavedTheme } from '@/utils/theme';
@@ -30,7 +29,7 @@ function loadGrid(): boolean {
 }
 
 function Dashboard() {
-  const works = from(liveQuery(() => db.ao3Works.toArray()));
+  const works = from(liveQuery(readLibrary));
   const all = () => works() ?? [];
   // Filters are shared with the side panel; see createLibraryFilters.
   const lib = createLibraryFilters(works);
@@ -63,44 +62,45 @@ function Dashboard() {
   );
   // Removing works can leave the current page past the end.
   createEffect(() => works() && page() >= pages() && setPage(pages() - 1));
-  const toggle = (id: string) => {
+  // Selection holds workKey()s: ids alone can repeat across platforms.
+  const toggle = (key: string) => {
     const next = new Set(selected());
-    if (next.has(id)) next.delete(id);
-    else next.add(id);
+    if (next.has(key)) next.delete(key);
+    else next.add(key);
     setSelected(next);
   };
-  const pageAllSelected = () => pageWorks().length > 0 && pageWorks().every((w) => selected().has(w.id));
+  const pageAllSelected = () => pageWorks().length > 0 && pageWorks().every((w) => selected().has(workKey(w)));
   const togglePage = () => {
     const next = new Set(selected());
     const add = !pageAllSelected();
     for (const w of pageWorks()) {
-      if (add) next.add(w.id);
-      else next.delete(w.id);
+      if (add) next.add(workKey(w));
+      else next.delete(workKey(w));
     }
     setSelected(next);
   };
   const [confirmRemove, setConfirmRemove] = createSignal(false);
   async function bulkStatus(s: Status) {
-    await setAo3Statuses([...selected()], s);
+    await setStatuses([...selected()], s);
     setSelected(new Set<string>());
   }
   async function bulkRemove() {
-    await removeAo3Works([...selected()]);
+    await removeWorks([...selected()]);
     setSelected(new Set<string>());
     setConfirmRemove(false);
   }
 
   const [modal, setModal] = createSignal<ModalState>(null);
-  // dashboard.html#work=<id> (from the toolbar menu) opens that work once the library has
+  // dashboard.html#work=<platform>:<id> (from the toolbar menu) opens that work once the library has
   // loaded; the modal closes itself for a work that isn't there. The hash is then dropped
   // so a reload doesn't reopen it.
-  const linked = location.hash.match(/^#work=(\d+)$/)?.[1];
+  const linked = location.hash.match(/^#work=([a-z0-9]+:\d+)$/)?.[1];
   history.replaceState(null, '', location.pathname);
   let linkOpened = false;
   createEffect(() => {
     if (!linked || linkOpened || !works()) return;
     linkOpened = true;
-    setModal({ kind: 'edit', id: linked });
+    setModal({ kind: 'edit', key: linked });
   });
 
   return (
@@ -140,7 +140,7 @@ function Dashboard() {
             value={lib.filters().status}
             onChange={(e) => lib.set({ status: e.currentTarget.value as LibraryFilter['status'] })}
           >
-            <option value="all">All statuses ({all().length})</option>
+            <option value="all">All statuses ({lib.shownTotal()})</option>
             <For each={STATUSES}>
               {(s) => (
                 <option value={s}>
@@ -188,7 +188,7 @@ function Dashboard() {
             </select>
           </label>
         </div>
-        <BackgroundRefresh class="col-span-full" />
+        <PlatformFilter lib={lib} class="col-span-full text-sm" />
       </aside>
 
       <main class="grid min-w-0 content-start gap-2.5 [grid-area:main]">
@@ -201,7 +201,7 @@ function Dashboard() {
               aria-label="Select all on this page"
             />
             <span>
-              {selected().size ? `${selected().size} selected` : `${shown().length} of ${all().length} works`}
+              {selected().size ? `${selected().size} selected` : `${shown().length} of ${lib.shownTotal()} works`}
             </span>
           </label>
           <Show when={selected().size}>
@@ -257,9 +257,9 @@ function Dashboard() {
               <Row
                 work={w}
                 grid={grid()}
-                selected={selected().has(w.id)}
-                onToggle={() => toggle(w.id)}
-                onOpen={() => setModal({ kind: 'edit', id: w.id })}
+                selected={selected().has(workKey(w))}
+                onToggle={() => toggle(workKey(w))}
+                onOpen={() => setModal({ kind: 'edit', key: workKey(w) })}
               />
             )}
           </For>
@@ -300,7 +300,7 @@ const Empty = () => (
 );
 
 // Each row is its own size container (@container), so it lays out by its own width.
-function Row(props: { work: Ao3Work; grid: boolean; selected: boolean; onToggle: () => void; onOpen: () => void }) {
+function Row(props: { work: Work; grid: boolean; selected: boolean; onToggle: () => void; onOpen: () => void }) {
   const w = () => props.work;
   const bg = () => (props.selected ? 'bg-accent-soft' : props.grid ? 'bg-surface' : '');
   return (

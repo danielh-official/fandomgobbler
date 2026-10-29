@@ -1,62 +1,76 @@
 import { db } from './db';
-import type { Ao3Work, Status } from './models';
+import { parseWorkKey, type Status, type Work, type WorkRef } from './models';
 
-export type Ao3WorkInput = Pick<Ao3Work, 'id' | 'title' | 'author' | 'url'> & Partial<Ao3Work>;
+// A work as read from a page: enough to identify and show it, before it's tracked.
+export type WorkInput = Pick<Work, 'platform' | 'id' | 'title' | 'author' | 'url'> & Partial<Work>;
 
-export async function getAo3Work(id: string): Promise<Ao3Work | null> {
-  return (await db.ao3Works.get(id)) ?? null;
+const key = (w: WorkRef): [Work['platform'], string] => [w.platform, w.id];
+
+export async function getWork(ref: WorkRef): Promise<Work | null> {
+  return (await db.works.get(key(ref))) ?? null;
 }
+
+// The whole library, every platform. For liveQuery.
+export const readLibrary = (): Promise<Work[]> => db.works.toArray();
 
 // Merges input over the stored work. A work is tracked by giving it a status, so with no
 // status in the input or the stored work nothing is saved and this returns null.
-export async function saveAo3Work(input: Ao3WorkInput, now = Date.now()): Promise<Ao3Work | null> {
-  return db.transaction('rw', db.ao3Works, async () => {
-    const prev = await db.ao3Works.get(input.id);
+export async function saveWork(input: WorkInput, now = Date.now()): Promise<Work | null> {
+  return db.transaction('rw', db.works, async () => {
+    const prev = await db.works.get(key(input));
     const status = input.status ?? prev?.status;
     if (!status) return null;
-    const work: Ao3Work = { authorUrl: null, addedAt: now, movedAt: now, ...prev, ...input, status };
+    const work: Work = { authorUrl: null, addedAt: now, movedAt: now, ...prev, ...input, status };
     if (prev && prev.status !== status) work.movedAt = now;
     if (status === 'completed' && prev?.status !== 'completed') work.finishedAt = now;
-    await db.ao3Works.put(work);
+    await db.works.put(work);
     return work;
   });
 }
 
-export async function removeAo3Work(id: string): Promise<void> {
-  await db.ao3Works.delete(id);
+export async function removeWork(ref: WorkRef): Promise<void> {
+  await db.works.delete(key(ref));
 }
 
-export async function setAo3Statuses(ids: string[], status: Status, now = Date.now()): Promise<void> {
-  await db.transaction('rw', db.ao3Works, async () => {
-    for (const w of await db.ao3Works.bulkGet(ids)) if (w) await saveAo3Work({ ...w, status }, now);
+// Bulk actions take workKey()s, as the dashboard selection holds them.
+export async function setStatuses(keys: string[], status: Status, now = Date.now()): Promise<void> {
+  await db.transaction('rw', db.works, async () => {
+    for (const w of await db.works.bulkGet(keys.map((k) => key(parseWorkKey(k))))) {
+      if (w) await saveWork({ ...w, status }, now);
+    }
   });
 }
 
-export async function removeAo3Works(ids: string[]): Promise<void> {
-  await db.ao3Works.bulkDelete(ids);
+export async function removeWorks(keys: string[]): Promise<void> {
+  await db.works.bulkDelete(keys.map((k) => key(parseWorkKey(k))));
 }
 
 // Adds the works that aren't in the library yet, with the given status. Works already in
 // the library are left completely untouched, so running an import again changes nothing.
 // Returns how many were added.
-export async function addAo3WorksIfMissing(works: Ao3WorkInput[], status: Status, now = Date.now()): Promise<number> {
-  return db.transaction('rw', db.ao3Works, async () => {
-    const existing = await db.ao3Works.bulkGet(works.map((w) => w.id));
+export async function addWorksIfMissing(works: WorkInput[], status: Status, now = Date.now()): Promise<number> {
+  return db.transaction('rw', db.works, async () => {
+    const existing = await db.works.bulkGet(works.map(key));
     const fresh = works
       .filter((_, i) => !existing[i])
-      .map((w): Ao3Work => ({ authorUrl: null, ...w, status, addedAt: now, movedAt: now }));
-    await db.ao3Works.bulkAdd(fresh);
+      .map((w): Work => ({ authorUrl: null, ...w, status, addedAt: now, movedAt: now }));
+    await db.works.bulkAdd(fresh);
     return fresh.length;
   });
 }
 
-// Marks a tracked work as deleted from AO3, remembering its status. Untracked or
+// Marks a tracked work as deleted from its platform, remembering its status. Untracked or
 // already-deleted works are left alone.
-export async function markAo3WorkLost(id: string, now = Date.now()): Promise<boolean> {
-  return db.transaction('rw', db.ao3Works, async () => {
-    const w = await db.ao3Works.get(id);
+export async function markWorkLost(ref: WorkRef, now = Date.now()): Promise<boolean> {
+  return db.transaction('rw', db.works, async () => {
+    const w = await db.works.get(key(ref));
     if (!w || w.status === 'lost') return false;
-    await db.ao3Works.put({ ...w, status: 'lost', lostFrom: w.status, lostAt: now, movedAt: now });
+    await db.works.put({ ...w, status: 'lost', lostFrom: w.status, lostAt: now, movedAt: now });
     return true;
   });
+}
+
+// Records that a work's page was read without anything else to save.
+export async function touchRefreshed(ref: WorkRef, at: number): Promise<void> {
+  await db.works.update(key(ref), { refreshedAt: at });
 }

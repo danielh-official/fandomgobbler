@@ -8,14 +8,14 @@ import { card, linkButton } from '@/components/ui';
 import { WorkView } from '@/components/WorkView';
 import { ao3WorkId } from '@/utils/ao3';
 import { fetchAo3Work, refreshIfTracked } from '@/utils/ao3-fetch';
-import { db } from '@/utils/db';
-import type { Ao3WorkInput } from '@/utils/library';
+import { readLibrary, type WorkInput } from '@/utils/library';
+import { workKey } from '@/utils/models';
 import { applySavedTheme } from '@/utils/theme';
 import { readTabWork } from '@/utils/ao3-tab';
 import { LibraryView } from './LibraryView';
 
 // One fetch for a URL the user pasted.
-async function readUrlWork(url: string): Promise<Ao3WorkInput> {
+async function readUrlWork(url: string): Promise<WorkInput> {
   const id = ao3WorkId(url);
   if (!id) throw new Error('That isn’t an AO3 work URL.');
   const work = await fetchAo3Work(id);
@@ -25,11 +25,11 @@ async function readUrlWork(url: string): Promise<Ao3WorkInput> {
 
 // What the detail view shows: a work already in hand (library or current tab), or a
 // pasted URL still to be fetched.
-type Detail = { work: Ao3WorkInput } | { url: string };
+type Detail = { work: WorkInput } | { url: string };
 
 function App() {
-  const works = from(liveQuery(() => db.ao3Works.toArray()));
-  const trackedOf = (id: string) => works()?.find((t) => t.id === id);
+  const works = from(liveQuery(readLibrary));
+  const trackedOf = (w: WorkInput) => works()?.find((t) => workKey(t) === workKey(w));
 
   // Follow the active tab of this window only; background tabs loading shouldn't count.
   const [tab, setTab] = createSignal<{ url: string; id: number } | null>(null);
@@ -114,7 +114,7 @@ function App() {
           <Match when={urlWork.error}>
             <p class={`${card} text-danger`}>{(urlWork.error as Error).message}</p>
           </Match>
-          <Match when={detailWork()}>{(w) => <WorkView work={w()} tracked={trackedOf(w().id)} />}</Match>
+          <Match when={detailWork()}>{(w) => <WorkView work={w()} tracked={trackedOf(w())} />}</Match>
         </Switch>
       </Show>
 

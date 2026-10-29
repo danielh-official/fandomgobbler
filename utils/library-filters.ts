@@ -1,6 +1,7 @@
 import { createEffect, createMemo, createSignal, onCleanup } from 'solid-js';
 import { authorsOf, firstTier, statusCounts, valueCounts, viewLibrary, type LibraryFilter } from './library-view';
-import { STATUSES, type Ao3Work } from './models';
+import { STATUSES, type Work } from './models';
+import { PLATFORM_IDS, type Platform } from './platforms';
 
 const KEY = 'fg-library-filters';
 
@@ -10,17 +11,22 @@ export interface SavedFilters {
   author: string;
   // Off by default: only works with unread chapters are listed.
   showRead: boolean;
+  // Hidden rather than shown, so platforms added later start out visible.
+  hiddenPlatforms: Platform[];
 }
 
 // Anything missing or malformed falls back to "show everything".
 export function parseFilters(json: string | null): SavedFilters {
-  const filters: SavedFilters = { status: 'all', fandom: '', author: '', showRead: false };
+  const filters: SavedFilters = { status: 'all', fandom: '', author: '', showRead: false, hiddenPlatforms: [] };
   try {
     const saved = JSON.parse(json ?? 'null') ?? {};
     if (STATUSES.includes(saved.status)) filters.status = saved.status;
     if (typeof saved.fandom === 'string') filters.fandom = saved.fandom;
     if (typeof saved.author === 'string') filters.author = saved.author;
     filters.showRead = saved.showRead === true;
+    if (Array.isArray(saved.hiddenPlatforms)) {
+      filters.hiddenPlatforms = PLATFORM_IDS.filter((p) => saved.hiddenPlatforms.includes(p));
+    }
   } catch {
     // Unreadable saved state: start from the defaults.
   }
@@ -40,7 +46,7 @@ function load(): SavedFilters {
 // on one origin, so they share localStorage: the last filters are restored on open, and
 // a change in one page reaches the other live through the `storage` event. The search
 // text is per page and not saved.
-export function createLibraryFilters(works: () => Ao3Work[] | undefined) {
+export function createLibraryFilters(works: () => Work[] | undefined) {
   const [filters, setFilters] = createSignal(load());
   const set = (patch: Partial<SavedFilters>) => setFilters({ ...filters(), ...patch });
 
@@ -59,10 +65,17 @@ export function createLibraryFilters(works: () => Ao3Work[] | undefined) {
 
   const [query, setQuery] = createSignal('');
   const all = () => works() ?? [];
-  const counts = createMemo(() => statusCounts(all()));
+  // Everything else (counts, options, the list) only covers the platforms shown.
+  const onShownPlatforms = createMemo(() => all().filter((w) => !filters().hiddenPlatforms.includes(w.platform)));
+  const platformCounts = createMemo(() => {
+    const n = Object.fromEntries(PLATFORM_IDS.map((p) => [p, 0])) as Record<Platform, number>;
+    for (const w of all()) n[w.platform]++;
+    return n;
+  });
+  const counts = createMemo(() => statusCounts(onShownPlatforms()));
   // Fandom and author options only cover works that pass the first-tier filters: the
   // selected status and, unless "show read" is on, unread chapters.
-  const narrowed = createMemo(() => firstTier(all(), filters().status, !filters().showRead));
+  const narrowed = createMemo(() => firstTier(onShownPlatforms(), filters().status, !filters().showRead));
   const fandoms = createMemo(() => valueCounts(narrowed(), (w) => w.fandoms ?? []));
   const authors = createMemo(() => valueCounts(narrowed(), authorsOf));
   // Changing those can leave the chosen fandom or author with no works; fall back to all.
@@ -82,14 +95,34 @@ export function createLibraryFilters(works: () => Ao3Work[] | undefined) {
       fandom: f.fandom || undefined,
       author: f.author || undefined,
       unreadOnly: !f.showRead,
+      hiddenPlatforms: f.hiddenPlatforms,
     });
   });
   const active = () => {
     const f = filters();
-    return !!(query() || f.status !== 'all' || f.fandom || f.author || !f.showRead);
+    return !!(query() || f.status !== 'all' || f.fandom || f.author || !f.showRead || f.hiddenPlatforms.length);
   };
 
-  return { filters, set, query, setQuery, counts, fandoms, authors, shown, active };
+  const shownTotal = () => onShownPlatforms().length;
+  const togglePlatform = (p: Platform, show: boolean) => {
+    const hidden = filters().hiddenPlatforms.filter((h) => h !== p);
+    set({ hiddenPlatforms: show ? hidden : [...hidden, p] });
+  };
+
+  return {
+    filters,
+    set,
+    query,
+    setQuery,
+    counts,
+    platformCounts,
+    shownTotal,
+    togglePlatform,
+    fandoms,
+    authors,
+    shown,
+    active,
+  };
 }
 
 export type LibraryFilters = ReturnType<typeof createLibraryFilters>;

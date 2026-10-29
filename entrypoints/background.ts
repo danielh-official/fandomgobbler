@@ -5,13 +5,9 @@ import { ao3WorkId } from '@/utils/ao3';
 import { setTrackedBadge } from '@/utils/badge';
 import { db } from '@/utils/db';
 import { PICKABLE_STATUSES, STATUS_LABELS, type Status } from '@/utils/models';
-import {
-  loadRefreshSettings,
-  onRefreshSettingsChanged,
-  REFRESH_BATCH,
-  REFRESH_EVERY_MIN,
-  saveRefreshSettings,
-} from '@/utils/refresh-settings';
+import { isUnresponsiveStatus, isWaiting, recordFailure } from '@/utils/health';
+import { PLATFORMS, type Platform } from '@/utils/platforms';
+import { loadHealth, REFRESH_BATCH, REFRESH_EVERY_MIN, saveHealth } from '@/utils/refresh-settings';
 import type { AddWorkMessage, AddWorkResponse, RefreshDueMessage, RefreshDueResponse } from './offscreen/main';
 
 const MENU = 'add-work';
@@ -35,7 +31,7 @@ async function ensureOffscreen() {
 
 async function updateBadge(tabId: number, url: string | undefined) {
   const id = url ? ao3WorkId(url) : null;
-  await setTrackedBadge(tabId, !!id && !!(await db.ao3Works.get(id)));
+  await setTrackedBadge(tabId, !!id && !!(await db.works.get(['ao3', id])));
 }
 
 // Every open AO3 tab; their URLs are visible thanks to the AO3 host permission.
@@ -69,28 +65,51 @@ async function addFromPage(tabId: number, url: string, status: Status) {
   }
 }
 
-// The alarm exists exactly while background refresh is on. Not recreated when it exists:
-// that would restart its timer on every worker wake-up, so it might never fire.
-async function syncRefreshAlarm() {
-  const { enabled } = await loadRefreshSettings();
-  if (!enabled) await browser.alarms.clear(REFRESH_ALARM);
-  else if (!(await browser.alarms.get(REFRESH_ALARM))) {
+// Created only when missing: recreating it on every worker wake-up would restart its
+// timer, so it might never fire.
+async function ensureRefreshAlarm() {
+  if (!(await browser.alarms.get(REFRESH_ALARM))) {
     await browser.alarms.create(REFRESH_ALARM, { delayInMinutes: 1, periodInMinutes: REFRESH_EVERY_MIN });
   }
 }
 
-// A few of the most overdue works per alarm; the offscreen document does the work.
-async function refreshInBackground() {
-  const at = Date.now();
+// Platforms with a background refresh. Each is paused on its own while it's unresponsive.
+const REFRESHED: Platform[] = ['ao3'];
+
+// One request to the platform's home page: does it answer at all?
+async function healthCheck(platform: Platform): Promise<boolean> {
   try {
-    await ensureOffscreen();
-    const msg: RefreshDueMessage = { type: 'refresh-due', count: REFRESH_BATCH };
-    const res: RefreshDueResponse = await browser.runtime.sendMessage(msg);
-    if ('error' in res) throw new Error(res.error);
-    await saveRefreshSettings({ last: { at, checked: res.checked, newChapters: res.newChapters, lost: res.lost } });
-  } catch (e) {
-    await saveRefreshSettings({ last: { at, checked: 0, newChapters: 0, lost: 0, error: (e as Error).message } });
+    const res = await fetch(PLATFORMS[platform].home, { signal: AbortSignal.timeout(20000) });
+    return !isUnresponsiveStatus(res.status);
+  } catch {
+    return false;
   }
+}
+
+// A few of the most overdue works per alarm; the offscreen document does the work. A
+// platform that stops answering is left alone until a health check says it's back.
+async function refreshInBackground() {
+  const now = Date.now();
+  const health = await loadHealth();
+  for (const platform of REFRESHED) {
+    const h = health[platform];
+    if (isWaiting(h, now)) continue;
+    if (h && !(await healthCheck(platform))) {
+      health[platform] = recordFailure(h, 'Health check failed', now);
+      continue;
+    }
+    try {
+      await ensureOffscreen();
+      const msg: RefreshDueMessage = { type: 'refresh-due', count: REFRESH_BATCH };
+      const res: RefreshDueResponse = await browser.runtime.sendMessage(msg);
+      if (!('error' in res)) delete health[platform];
+      else if (res.unresponsive) health[platform] = recordFailure(h, res.error, now);
+      else console.warn(`Background refresh of ${platform} failed:`, res.error);
+    } catch (e) {
+      console.warn(`Background refresh of ${platform} failed:`, e);
+    }
+  }
+  await saveHealth(health);
 }
 
 export default defineBackground(() => {
@@ -98,8 +117,7 @@ export default defineBackground(() => {
   // explicitly because Chrome remembers the earlier "open side panel on click".
   browser.sidePanel.setPanelBehavior({ openPanelOnActionClick: false });
 
-  syncRefreshAlarm();
-  onRefreshSettingsChanged(() => syncRefreshAlarm());
+  ensureRefreshAlarm();
   browser.alarms.onAlarm.addListener((alarm) => alarm.name === REFRESH_ALARM && refreshInBackground());
 
   // ✓ badge on tabs showing a tracked work. Chrome clears tab badges on navigation, so
@@ -108,7 +126,7 @@ export default defineBackground(() => {
   browser.tabs.onUpdated.addListener((tabId, change, tab) => {
     if (change.url || change.status === 'complete') updateBadge(tabId, tab.url);
   });
-  liveQuery(() => db.ao3Works.toCollection().primaryKeys()).subscribe(() => updateAllBadges());
+  liveQuery(() => db.works.toCollection().primaryKeys()).subscribe(() => updateAllBadges());
 
   // Right-click on an AO3 work page: "Add to library" › status.
   browser.runtime.onInstalled.addListener(() => {

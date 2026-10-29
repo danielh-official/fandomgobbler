@@ -2,7 +2,7 @@ import 'fake-indexeddb/auto';
 import Dexie from 'dexie';
 import { expect, test } from 'vitest';
 
-test('v2 upgrade drops categories and statusless works', async () => {
+test('upgrades drop categories and statusless works, and move AO3 works into works', async () => {
   const v1 = new Dexie('fandomgobbler');
   v1.version(1).stores({ ao3Works: 'id, status, *customCats, addedAt, movedAt', ao3Categories: 'id, name' });
   await v1.table('ao3Works').bulkAdd([
@@ -14,6 +14,6 @@ test('v2 upgrade drops categories and statusless works', async () => {
 
   // Imported after the v1 database exists, so opening it runs the upgrade.
   const { db } = await import('./db');
-  expect(await db.ao3Works.toArray()).toEqual([{ id: '1', status: 'want' }]);
-  expect(db.tables.map((t) => t.name)).toEqual(['ao3Works']);
+  expect(await db.works.toArray()).toEqual([{ platform: 'ao3', id: '1', status: 'want' }]);
+  expect(db.tables.map((t) => t.name)).toEqual(['works']);
 });

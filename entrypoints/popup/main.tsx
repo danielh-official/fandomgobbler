@@ -5,9 +5,8 @@ import { render } from 'solid-js/web';
 import { browser } from 'wxt/browser';
 import { card, linkButton, primaryButton } from '@/components/ui';
 import { readTabWork } from '@/utils/ao3-tab';
-import { db } from '@/utils/db';
-import { saveAo3Work, type Ao3WorkInput } from '@/utils/library';
-import { PICKABLE_STATUSES, STATUS_LABELS, type Status } from '@/utils/models';
+import { readLibrary, saveWork, type WorkInput } from '@/utils/library';
+import { PICKABLE_STATUSES, STATUS_LABELS, workKey, type Status } from '@/utils/models';
 import { setTrackedBadge } from '@/utils/badge';
 import { applySavedTheme } from '@/utils/theme';
 
@@ -25,12 +24,12 @@ function Popup() {
     (t) => readTabWork(t).catch(() => null),
   );
   // The liveQuery callback isn't reactive to work(), so watch the library and look it up.
-  const works = from(liveQuery(() => db.ao3Works.toArray()));
-  const tracked = () => works()?.find((t) => t.id === work()?.id);
+  const works = from(liveQuery(readLibrary));
+  const tracked = () => works()?.find((t) => work() && workKey(t) === workKey(work()!));
   const [status, setStatus] = createSignal<Status>('want');
 
-  async function add(w: Ao3WorkInput) {
-    await saveAo3Work({ ...w, status: status() });
+  async function add(w: WorkInput) {
+    await saveWork({ ...w, status: status() });
     // The background also updates it when it's awake; this covers when it isn't.
     const tabId = tab()?.id;
     if (tabId !== undefined) await setTrackedBadge(tabId, true);
@@ -73,7 +72,9 @@ function Popup() {
                   <button
                     class={linkButton}
                     onClick={() =>
-                      go(() => browser.tabs.create({ url: browser.runtime.getURL(`/dashboard.html#work=${t().id}`) }))
+                      go(() =>
+                        browser.tabs.create({ url: browser.runtime.getURL(`/dashboard.html#work=${workKey(t())}`) }),
+                      )
                     }
                   >
                     Open in dashboard ↗

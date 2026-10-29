@@ -1,9 +1,9 @@
 import { ao3WorkUrl, parseAo3Work } from './ao3';
 import { defaultFetch, fetchAo3Paced, wait, type Fetch, type Wait } from './ao3-import';
-import { db } from './db';
-import { getAo3Work, markAo3WorkLost, saveAo3Work } from './library';
+import { isUnresponsiveStatus, PlatformUnresponsiveError } from './health';
+import { getWork, markWorkLost, readLibrary, saveWork, touchRefreshed } from './library';
 import { isOngoing } from './library-view';
-import type { Ao3Work } from './models';
+import type { Work } from './models';
 
 // Refresh of tracked works, run a few at a time by the background (see background.ts):
 // one work page at a time, paced like the imports. A work that loads gets its stored
@@ -31,18 +31,29 @@ export const DUE_AFTER = { ongoing: 12 * HOUR, completed: 7 * 24 * HOUR };
 
 // The n works most overdue, ongoing and completed weighed by their own due times. Never
 // refreshed counts as oldest. Deleted works are skipped.
-export function pickDue(works: Ao3Work[], now: number, n: number): Ao3Work[] {
-  const overdue = (w: Ao3Work) =>
-    (now - (w.refreshedAt ?? 0)) / (isOngoing(w) ? DUE_AFTER.ongoing : DUE_AFTER.completed);
+export function pickDue(works: Work[], now: number, n: number): Work[] {
+  const overdue = (w: Work) => (now - (w.refreshedAt ?? 0)) / (isOngoing(w) ? DUE_AFTER.ongoing : DUE_AFTER.completed);
   return works
     .filter((w) => w.status !== 'lost' && overdue(w) >= 1)
     .sort((a, b) => overdue(b) - overdue(a))
     .slice(0, n);
 }
 
+// For the background: no in-batch backoff, an unresponsive AO3 throws so the health
+// checks take over.
 export async function refreshDueWorks(n: number, now = Date.now()): Promise<RefreshProgress> {
-  return runRefresh({ ids: pickDue(await db.ao3Works.toArray(), now, n).map((w) => w.id) });
+  return runRefresh({
+    ids: pickDue(
+      (await readLibrary()).filter((w) => w.platform === 'ao3'),
+      now,
+      n,
+    ).map((w) => w.id),
+    backoffs: [],
+  });
 }
+
+// A real AO3 page has the site header; an outage or proxy error page doesn't.
+const looksLikeAo3 = (html: string) => html.includes('id="header"');
 
 export async function runRefresh(opts: {
   ids: string[];
@@ -50,6 +61,7 @@ export async function runRefresh(opts: {
   onProgress?: (p: RefreshProgress) => void;
   fetchFn?: Fetch;
   sleep?: Wait;
+  backoffs?: number[];
 }): Promise<RefreshProgress> {
   const { fetchFn = defaultFetch, sleep = wait, signal } = opts;
   const progress: RefreshProgress = { checked: 0, total: opts.ids.length, newChapters: 0, lost: 0, unchecked: 0 };
@@ -63,20 +75,25 @@ export async function runRefresh(opts: {
       sleep,
       signal,
       onWait: (ms) => opts.onProgress?.({ ...progress, retryingInMs: ms }),
+      backoffs: opts.backoffs,
     });
     const work = status === 200 ? parseAo3Work(html, id) : null;
+    // Thrown before anything is saved, so works aren't marked refreshed during an outage.
+    if (isUnresponsiveStatus(status) || (status === 200 && !work && !looksLikeAo3(html))) {
+      throw new PlatformUnresponsiveError(`AO3 returned ${status}${status === 200 ? ' without its site' : ''}.`);
+    }
     const refreshedAt = Date.now();
     // Saved work by work, so stopping keeps everything checked so far.
-    if (status === 404) progress.lost += Number(await markAo3WorkLost(id));
+    if (status === 404) progress.lost += Number(await markWorkLost({ platform: 'ao3', id }));
     else if (work) {
-      const prev = await getAo3Work(id);
-      if (prev && (await saveAo3Work({ ...work, refreshedAt }))) {
+      const prev = await getWork({ platform: 'ao3', id });
+      if (prev && (await saveWork({ ...work, refreshedAt }))) {
         if ((work.chaptersPosted ?? 0) > (prev.chaptersPosted ?? 0)) progress.newChapters++;
       }
     } else {
       progress.unchecked++;
       // Still counts as checked, so an unreadable work doesn't stay first in line.
-      await db.ao3Works.update(id, { refreshedAt });
+      await touchRefreshed({ platform: 'ao3', id }, refreshedAt);
     }
     progress.checked++;
     report();

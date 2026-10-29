@@ -6,7 +6,7 @@ import { db } from './db';
 import bookmarksPage from './fixtures/ao3-bookmarks-page.html?raw';
 import readingsLastPage from './fixtures/ao3-readings-last-page.html?raw';
 
-beforeEach(() => db.ao3Works.clear());
+beforeEach(() => db.works.clear());
 
 // A fake AO3 that serves the given responses in order and records requests and waits.
 function fakeAo3(responses: { status?: number; body: string }[]) {
@@ -45,8 +45,8 @@ test('fetches pages in order with a pause between them, then stops on the last p
   expect(progress[1]).toMatchObject({ page: 1, lastPage: 7 });
   expect(result).toEqual({ page: 2, lastPage: 2, seen: 4, added: 4 });
   expect(progress.at(-1)).toEqual(result);
-  expect(await db.ao3Works.count()).toBe(4);
-  expect((await db.ao3Works.get('201'))?.status).toBe('want');
+  expect(await db.works.count()).toBe(4);
+  expect((await db.works.get(['ao3', '201']))?.status).toBe('want');
 });
 
 test('running the same import again adds nothing', async () => {
@@ -56,7 +56,7 @@ test('running the same import again adds nothing', async () => {
     status: 'want',
     ...fakeAo3([{ body: readingsLastPage }]),
   });
-  const before = await db.ao3Works.toArray();
+  const before = await db.works.toArray();
   const again = await runImport({
     source: 'bookmarks',
     username: 'reader',
@@ -64,7 +64,7 @@ test('running the same import again adds nothing', async () => {
     ...fakeAo3([{ body: readingsLastPage }]),
   });
   expect(again.added).toBe(0);
-  expect(await db.ao3Works.toArray()).toEqual(before);
+  expect(await db.works.toArray()).toEqual(before);
 });
 
 test('backs off on a rate limit, then continues', async () => {
@@ -81,7 +81,7 @@ test('gives up after the backoffs, keeping earlier pages', async () => {
   await expect(runImport({ source: 'bookmarks', username: 'reader', status: 'want', ...ao3 })).rejects.toThrow(
     /rate-limiting/,
   );
-  expect(await db.ao3Works.count()).toBe(3);
+  expect(await db.works.count()).toBe(3);
 });
 
 test('Marked for Later while logged out explains why it is empty', async () => {

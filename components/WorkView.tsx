@@ -1,27 +1,27 @@
 import { For, Show } from 'solid-js';
-import { removeAo3Work, saveAo3Work, type Ao3WorkInput } from '@/utils/library';
+import { removeWork, saveWork, type WorkInput } from '@/utils/library';
 import { Personal } from './Personal';
 import { isOngoing } from '@/utils/library-view';
-import { PICKABLE_STATUSES, STATUS_LABELS, type Ao3Work, type Status } from '@/utils/models';
+import { PICKABLE_STATUSES, STATUS_LABELS, type Work, type Status } from '@/utils/models';
 import { formatDate, relativeDay, relativeTime } from '@/utils/time';
 import { card, chip, sectionHeading } from './ui';
 
 const num = (n: number | null | undefined) => (n == null ? null : n.toLocaleString());
-// AO3 dates are calendar days, so their relative part is in days, not hours.
+// Platform dates are calendar days, so their relative part is in days, not hours.
 const day = (t: number | null | undefined) => (t == null ? null : `${formatDate(t)} (${relativeDay(t)})`);
 
-// "71 (ongoing)" when AO3 has no planned total, "5/10 (ongoing)" or "10/10" when it does.
-const chapters = (w: Ao3WorkInput) =>
+// "71 (ongoing)" with no planned total, "5/10 (ongoing)" or "10/10" with one.
+const chapters = (w: WorkInput) =>
   w.chaptersPosted == null
     ? null
     : `${w.chaptersPosted}${w.chaptersTotal == null ? '' : `/${w.chaptersTotal}`}${isOngoing(w) ? ' (ongoing)' : ''}`;
 
-export function WorkView(props: { work: Ao3WorkInput; tracked?: Ao3Work }) {
+export function WorkView(props: { work: WorkInput; tracked?: Work }) {
   const w = () => props.work;
   const status = () => props.tracked?.status;
 
   // Picking a status tracks the work; clicking the current one untracks it.
-  const pickStatus = (s: Status) => (status() === s ? removeAo3Work(w().id) : saveAo3Work({ ...w(), status: s }));
+  const pickStatus = (s: Status) => (status() === s ? removeWork(w()) : saveWork({ ...w(), status: s }));
 
   const stats = () =>
     [

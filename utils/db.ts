@@ -1,10 +1,12 @@
-import Dexie, { type EntityTable } from 'dexie';
-import type { Ao3Work } from './models';
+import Dexie, { type Table } from 'dexie';
+import type { Platform } from './platforms';
+import type { Work } from './models';
 
-// Opened from extension pages (side panel, dashboard). Never from a content script:
-// there IndexedDB would belong to the host site, not the extension.
+// Opened from extension pages (side panel, dashboard, offscreen document) and the
+// background worker. Never from a content script: there IndexedDB would belong to the
+// host site, not the extension.
 export const db = new Dexie('fandomgobbler') as Dexie & {
-  ao3Works: EntityTable<Ao3Work, 'id'>;
+  works: Table<Work, [Platform, string]>;
 };
 
 db.version(1).stores({
@@ -24,3 +26,14 @@ db.version(2)
         else delete work.customCats;
       }),
   );
+
+// One table for every platform, keyed by platform + id. AO3 works move over as is.
+db.version(3)
+  .stores({ works: '[platform+id], platform, status, addedAt, movedAt' })
+  .upgrade(async (tx) => {
+    const ao3 = await tx.table('ao3Works').toArray();
+    await tx.table('works').bulkAdd(ao3.map((w) => ({ ...w, platform: 'ao3' })));
+  });
+
+// Dropped in its own version, after v3 has copied it.
+db.version(4).stores({ ao3Works: null });

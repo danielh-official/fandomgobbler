@@ -10,9 +10,10 @@ import {
   viewLibrary,
   type LibraryFilter,
 } from './library-view';
-import type { Ao3Work } from './models';
+import type { Work } from './models';
 
-const work = (id: string, extra: Partial<Ao3Work> = {}): Ao3Work => ({
+const work = (id: string, extra: Partial<Work> = {}): Work => ({
+  platform: 'ao3',
   id,
   title: `Work ${id}`,
   author: 'A',
@@ -24,7 +25,7 @@ const work = (id: string, extra: Partial<Ao3Work> = {}): Ao3Work => ({
   ...extra,
 });
 const all: LibraryFilter = { status: 'all', query: '' };
-const ids = (ws: Ao3Work[]) => ws.map((w) => w.id);
+const ids = (ws: Work[]) => ws.map((w) => w.id);
 
 test('filters by status and query', () => {
   const works = [
@@ -119,4 +120,10 @@ test('a last chapter marked not finished counts as 1 unread', () => {
   expect(unreadChapters({ chaptersPosted: null, lastChapterUnfinished: true })).toBeNull();
   const works = [work('1', { chaptersPosted: 2, furthestChapter: { num: 2 }, lastChapterUnfinished: true })];
   expect(ids(viewLibrary(works, { ...all, unreadOnly: true }))).toEqual(['1']);
+});
+
+test('hidden platforms are left out', () => {
+  const works = [work('1'), work('2')];
+  expect(ids(viewLibrary(works, { ...all, hiddenPlatforms: ['ao3'] }))).toEqual([]);
+  expect(ids(viewLibrary(works, { ...all, hiddenPlatforms: [] }))).toHaveLength(2);
 });

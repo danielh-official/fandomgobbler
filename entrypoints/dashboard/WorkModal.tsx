@@ -2,13 +2,13 @@ import { createEffect, createResource, createSignal, Match, Show, Switch } from 
 import { WorkView } from '@/components/WorkView';
 import { ao3WorkId } from '@/utils/ao3';
 import { fetchAo3Work, refreshIfTracked } from '@/utils/ao3-fetch';
-import type { Ao3Work } from '@/utils/models';
+import { workKey, type Work } from '@/utils/models';
 import { ImportFromAo3 } from './ImportFromAo3';
 
-export type ModalState = { kind: 'edit'; id: string } | { kind: 'add' } | { kind: 'import' } | null;
+export type ModalState = { kind: 'edit'; key: string } | { kind: 'add' } | { kind: 'import' } | null;
 
 // Native <dialog> opened with showModal(): Esc, focus trapping and the backdrop come free.
-export function WorkModal(props: { state: ModalState; library: Ao3Work[]; onClose: () => void }) {
+export function WorkModal(props: { state: ModalState; library: Work[]; onClose: () => void }) {
   let dialog!: HTMLDialogElement;
   createEffect(() => {
     if (props.state && !dialog.open) dialog.showModal();
@@ -17,7 +17,7 @@ export function WorkModal(props: { state: ModalState; library: Ao3Work[]; onClos
 
   const editing = () => {
     const s = props.state;
-    return s?.kind === 'edit' ? props.library.find((w) => w.id === s.id) : undefined;
+    return s?.kind === 'edit' ? props.library.find((w) => workKey(w) === s.key) : undefined;
   };
   // Untracking the work being edited closes the modal: there's nothing left to edit.
   createEffect(() => props.state?.kind === 'edit' && !editing() && dialog.close());
@@ -52,7 +52,7 @@ export function WorkModal(props: { state: ModalState; library: Ao3Work[]; onClos
 }
 
 // Fetches the one work the user pasted, then shows it so they can pick a status.
-function AddWork(props: { library: Ao3Work[] }) {
+function AddWork(props: { library: Work[] }) {
   const [url, setUrl] = createSignal<string | null>(null);
   const [work] = createResource(url, async (u) => {
     const id = ao3WorkId(u);
@@ -86,10 +86,10 @@ function AddWork(props: { library: Ao3Work[] }) {
         <Match when={work()}>
           {(w) => (
             <>
-              <Show when={!props.library.some((t) => t.id === w().id)}>
+              <Show when={!props.library.some((t) => workKey(t) === workKey(w()))}>
                 <p class="text-xs text-muted">Pick a status to add it to your library.</p>
               </Show>
-              <WorkView work={w()} tracked={props.library.find((t) => t.id === w().id)} />
+              <WorkView work={w()} tracked={props.library.find((t) => workKey(t) === workKey(w()))} />
             </>
           )}
         </Match>

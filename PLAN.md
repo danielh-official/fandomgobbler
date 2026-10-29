@@ -23,9 +23,12 @@ when a milestone changes state or a decision is made.
   user before it is built.
 - **Tracked = has a status.** No custom categories for now; picking a status tracks a
   work, clearing it untracks.
-- **Editions stay separate.** One library per platform (AO3, FF.net, ...). In Dexie that
-  means one table per platform (e.g. `ao3Works`, `ffnetWorks`), not one table with a
-  `platform` discriminator.
+- **One `works` table for every platform.** Each work carries its `platform` and is keyed
+  by `[platform+id]` (ids repeat across platforms); fields a platform lacks stay unset
+  (decided by the user 2026-10-29, replacing "one table per platform" and the "edition
+  switcher"). Not a polymorphic relation: `platform` says where the work comes from, it
+  doesn't point at an owner. Platform-specific code (parsers, imports, refresh) lives in
+  per-platform modules (`utils/ao3*.ts`).
 - **Styling:** Tailwind CSS v4. Theme colours and element defaults live in
   `assets/app.css`; reused class sets in `components/ui.ts`. No other stylesheets.
 - **Code standards:** Prettier (+ Tailwind class sorting) and ESLint (typescript-eslint,
@@ -79,7 +82,9 @@ Status: `todo` · `in progress` · `awaiting test` · `done` · `deferred` · `d
 | 9   | AO3 imports: bookmarks, Marked for Later (manual, rate-limited) | done     |
 | 10  | Background refresh from AO3 (interval, rate-limited)            | done     |
 | 11  | Extension theme: system, light, dark (done before M10)          | done     |
-| 12  | FF.net edition                                                  | todo     |
+| 12  | Multi-platform library + platform filter                        | done     |
+| 13  | FanFiction.net                                                  | todo     |
+| 14  | Wattpad                                                         | todo     |
 
 ### 1. Scaffold
 
@@ -202,9 +207,8 @@ Status: `todo` · `in progress` · `awaiting test` · `done` · `deferred` · `d
   completed (so deletions of completed works are still caught); most overdue first, never
   refreshed first of all. `refreshedAt` is set by this refresh (also for unreadable works,
   so they don't block the queue) and by viewing a tracked work.
-- **Setting:** on by default; a dashboard card (below the filters) switches it and shows
-  the last run. Stored in `browser.storage.local` (`backgroundRefresh`) because the
-  background has no localStorage. No interval choice; add one if asked.
+- **Always on, no UI** (the user removed the dashboard card with its switch and last-run
+  line in M12). No interval choice; add one if asked.
 - 404 = deleted. A page that loads refreshes the stored metadata (as viewing it would).
   Anything else (restricted while logged out, unrevealed) is counted as unchecked and left
   alone. Deleted works are not re-checked or restored automatically.
@@ -219,15 +223,47 @@ Status: `todo` · `in progress` · `awaiting test` · `done` · `deferred` · `d
 - Every colour token is `light-dark(light, dark)` in `assets/app.css`, driven by
   `color-scheme`, so native controls (scrollbars, checkboxes) follow too.
 
-### 12. FF.net edition
+Priority raised 2026-10-29: AO3 is in an outage expected to last at least two weeks, so
+other platforms come first.
 
-- FF.net parser and work view in the side panel, `ffnetWorks` table, dashboard edition
-  switcher; capability flags hide AO3-only features.
+### 12. Multi-platform library + platform filter
+
+- `PLATFORMS` in `utils/platforms.ts` lists each platform (label, home page).
+- `Work` (models) with a `platform` field, stored in the `works` table (Dexie v3 copies
+  `ao3Works` in with `platform: 'ao3'`, v4 drops `ao3Works`). Generic library functions in
+  `utils/library.ts` (`getWork`, `saveWork`, `removeWork`, `setStatuses`, `removeWorks`,
+  `addWorksIfMissing`, `markWorkLost`, `touchRefreshed`, `readLibrary`). Works are keyed
+  by `workKey()` (`platform:id`) in selections, the modal and the dashboard link.
+- Platform filter (`components/PlatformFilter.tsx`): one checkbox per platform with its
+  count, all on by default, in the dashboard aside and the side panel filters. Saved as
+  `hiddenPlatforms` so new platforms start visible. Status counts, fandom/author options
+  and "N of M" only cover the shown platforms.
+- **Health checks** (`utils/health.ts`), at the user's request: a platform that answers
+  429, 5xx, nothing (network error, 20s timeout) or a 200 without its site (outage page)
+  is marked unresponsive and not polled. After a backoff (15 min, doubling, max 6 h) one
+  request to its home page checks it; the refresh resumes only when that answers. Works
+  aren't marked refreshed during an outage. State in `browser.storage.local`
+  (`platformHealth`), per platform.
+- Platform-specific parts (AO3 imports, AO3 refresh, tab reading) stay AO3-only until the
+  next platforms exist.
+
+### 13. FanFiction.net
+
+- `ffnetWorks` table and parser (story page stats line: chapters, words, dates, status).
+- Add from the open tab (side panel, toolbar menu, right-click), chapter links, ✓ badge.
+- FF.net sits behind Cloudflare, so extension fetches are likely blocked: reading the
+  open tab is the main path; whether background refresh can work is checked live first.
+
+### 14. Wattpad
+
+- `wattpadWorks` table; story id from story and part URLs; parts as chapters.
+- Wattpad's pages are script-rendered; its JSON endpoints may be the reliable source
+  (undocumented, so checked live first).
 
 ## Later (not scheduled)
 
 - Sync solution (replacement for Google Sheets sync). Will need infrastructure.
-- Wattpad / Tumblr editions.
+- Further platforms (user to choose; e.g. SpaceBattles/SufficientVelocity, Royal Road, Tumblr).
 - Firefox build (`wxt build -b firefox`).
 - Keyboard shortcut, context-menu "Track this work".
 - Custom categories. Built in M3, removed in M4 at the user's request. Dexie v2 dropped
@@ -287,3 +323,6 @@ Status: `todo` · `in progress` · `awaiting test` · `done` · `deferred` · `d
 - 2026-10-28: Settings page removed at the user's request; the theme stays in the page headers.
 - 2026-10-28: Toolbar ✓ badge on any page of a tracked work (chapters, index, ...), set on page load and on library changes (`utils/badge.ts`). Toolbar menu shows "Open in dashboard ↗" for tracked works, via `dashboard.html#work=<id>` (hash dropped after opening).
 - 2026-10-28: M10 done with the proposed defaults (on, 2 works every 5 min, ongoing first, completed weekly, dashboard switch; subscriptions left out). New permissions: `alarms`, `storage`. Not yet run against live AO3.
+- 2026-10-29: AO3 outage (2+ weeks expected) raises other platforms' priority. New order: M12 multi-platform library with a platform checkbox filter (all on by default), M13 FanFiction.net, M14 Wattpad. Tables stay per platform; the list merges them in the view.
+- 2026-10-29: M12 built: merged library (`LibraryWork`, `workKey`), platform checkbox filter, per-platform health checks for the background refresh. Background refresh card removed from the dashboard at the user's request (refresh always on).
+- 2026-10-29: Storage made platform-neutral at the user's request: one `works` table keyed by `[platform+id]` (v3 migrates `ao3Works`, v4 drops it), `Ao3Work` → `Work` with a stored `platform`, generic library functions. AO3-specific code stays in `utils/ao3*.ts`; shared screens still only read AO3 tabs and URLs until M13.

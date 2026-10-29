@@ -1,9 +1,9 @@
 import { ao3ChapterUrl } from '@/utils/ao3';
-import type { Ao3Work } from '@/utils/models';
+import type { Work } from '@/utils/models';
 
 // Opens the work's current chapter (chapter 1 if none is set) on AO3 in a new tab.
 export function ChapterLink(props: {
-  work: Pick<Ao3Work, 'id' | 'title' | 'chapterIds' | 'furthestChapter'>;
+  work: Pick<Work, 'id' | 'title' | 'chapterIds' | 'furthestChapter'>;
   class?: string;
 }) {
   const n = () => Math.max(1, props.work.furthestChapter?.num ?? 1);

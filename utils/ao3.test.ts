@@ -37,6 +37,7 @@ test('parseAo3Date uses local midnight', () => {
 
 test('parseAo3Work: chaptered, in progress, logged in and subscribed', () => {
   expect(parseAo3Work(chaptered, '4242')).toEqual({
+    platform: 'ao3',
     id: '4242',
     title: 'A Chaptered Work',
     author: 'writer',
@@ -119,6 +120,7 @@ test('parseAo3ListingPage: bookmarks page 1', () => {
   const { works, hasNext, lastPage } = parseAo3ListingPage(bookmarksPage);
   expect(works.map((w) => w.id)).toEqual(['101', '102', '103']);
   expect(works[0]).toEqual({
+    platform: 'ao3',
     id: '101',
     title: 'Ongoing Work',
     author: 'writer',

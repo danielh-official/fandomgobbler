@@ -22,7 +22,7 @@ function relative(diff: number, smallest: 'minute' | 'day'): string {
 // For exact timestamps, e.g. when a work was added.
 export const relativeTime = (t: number, now = Date.now()) => relative(t - now, 'minute');
 
-// For AO3 dates, which are calendar days with no time: compare days, not hours.
+// For platform dates, which are calendar days with no time: compare days, not hours.
 export const relativeDay = (t: number, now = Date.now()) => relative(startOfDay(t) - startOfDay(now), 'day');
 
 export const formatDate = (t: number) => new Date(t).toLocaleDateString(undefined, { dateStyle: 'medium' });

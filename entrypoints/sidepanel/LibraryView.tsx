@@ -1,10 +1,12 @@
 import { createEffect, createSignal, For, Show } from 'solid-js';
 import { ChapterLink } from '@/components/ChapterLink';
 import { card, linkButton } from '@/components/ui';
-import type { Ao3WorkInput } from '@/utils/library';
+import type { WorkInput } from '@/utils/library';
 import { createLibraryFilters } from '@/utils/library-filters';
+import { PLATFORMS } from '@/utils/platforms';
+import { PlatformFilter } from '@/components/PlatformFilter';
 import { isOngoing, lastUpdated, unreadChapters, type LibraryFilter } from '@/utils/library-view';
-import { STATUS_LABELS, STATUSES, type Ao3Work } from '@/utils/models';
+import { STATUS_LABELS, STATUSES, workKey, type Work } from '@/utils/models';
 import { formatDate, relativeDay } from '@/utils/time';
 
 const FILTERS_OPEN_KEY = 'fg-sidepanel-filters-open';
@@ -21,12 +23,11 @@ function loadFiltersOpen(): boolean {
 // `current` is the work in the active tab: pinned first and highlighted, tracked or not,
 // and regardless of filters. `works` is undefined until the library has loaded.
 export function LibraryView(props: {
-  works: Ao3Work[] | undefined;
-  current?: Ao3WorkInput | null;
-  onOpen: (w: Ao3WorkInput) => void;
+  works: Work[] | undefined;
+  current?: WorkInput | null;
+  onOpen: (w: WorkInput) => void;
 }) {
   const lib = createLibraryFilters(() => props.works);
-  const total = () => props.works?.length ?? 0;
 
   // Collapsed by default; whether it's open is remembered for next time.
   const [filtersOpen, setFiltersOpen] = createSignal(loadFiltersOpen());
@@ -41,6 +42,7 @@ export function LibraryView(props: {
   const filterSummary = () => {
     const f = lib.filters();
     const parts = [
+      f.hiddenPlatforms.length && `Hiding ${f.hiddenPlatforms.map((p) => PLATFORMS[p].label).join(', ')}`,
       f.showRead && 'Showing read',
       f.status !== 'all' && STATUS_LABELS[f.status],
       f.fandom,
@@ -73,7 +75,7 @@ export function LibraryView(props: {
             onChange={(e) => lib.set({ status: e.currentTarget.value as LibraryFilter['status'] })}
             aria-label="Status"
           >
-            <option value="all">All statuses ({total()})</option>
+            <option value="all">All statuses ({lib.shownTotal()})</option>
             <For each={STATUSES}>
               {(s) => (
                 <option value={s}>
@@ -115,6 +117,7 @@ export function LibraryView(props: {
               </For>
             </select>
           </div>
+          <PlatformFilter lib={lib} />
         </div>
       </details>
 
@@ -129,7 +132,7 @@ export function LibraryView(props: {
 
       <Show when={lib.active()}>
         <p class="text-xs text-muted">
-          {lib.shown().length} of {total()} works
+          {lib.shown().length} of {lib.shownTotal()} works
         </p>
       </Show>
 
@@ -138,14 +141,14 @@ export function LibraryView(props: {
           {(c) => (
             <WorkCard
               work={c()}
-              tracked={props.works?.find((w) => w.id === c().id)}
+              tracked={props.works?.find((w) => workKey(w) === workKey(c()))}
               current
               onOpen={() => props.onOpen(c())}
             />
           )}
         </Show>
         <For
-          each={lib.shown().filter((w) => w.id !== props.current?.id)}
+          each={lib.shown().filter((w) => !props.current || workKey(w) !== workKey(props.current))}
           fallback={
             <Show when={!props.current}>
               <li class="text-muted">No works match.</li>
@@ -159,7 +162,7 @@ export function LibraryView(props: {
   );
 }
 
-function WorkCard(props: { work: Ao3WorkInput; tracked?: Ao3Work; current?: boolean; onOpen: () => void }) {
+function WorkCard(props: { work: WorkInput; tracked?: Work; current?: boolean; onOpen: () => void }) {
   // Tracked works show what's stored (status, progress, rating); otherwise the page's data.
   const w = () => props.tracked ?? props.work;
   return (

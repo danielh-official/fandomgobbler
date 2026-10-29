@@ -1,5 +1,5 @@
-import type { Ao3WorkInput } from './library';
-import type { Ao3Work } from './models';
+import type { WorkInput } from './library';
+import type { Work } from './models';
 
 export const AO3_ORIGIN = 'https://archiveofourown.org';
 
@@ -37,7 +37,7 @@ const count = (el: Element | null) => (el ? parseInt(text(el).replace(/,/g, ''),
 const absolute = (href: string | null | undefined) => (href ? new URL(href, AO3_ORIGIN).href : null);
 
 // Returns null when the HTML has no work on it, e.g. AO3's adult-content warning page.
-export function parseAo3Work(html: string, id: string): Ao3WorkInput | null {
+export function parseAo3Work(html: string, id: string): WorkInput | null {
   const doc = new DOMParser().parseFromString(html, 'text/html');
   const title = text(doc.querySelector('h2.title'));
   if (!title) return null;
@@ -72,6 +72,7 @@ export function parseAo3Work(html: string, id: string): Ao3WorkInput | null {
   );
 
   return {
+    platform: 'ao3',
     id,
     title,
     author: authors.map(text).join(', ') || 'Anonymous',
@@ -104,7 +105,7 @@ export function parseAo3Work(html: string, id: string): Ao3WorkInput | null {
 
 // AO3 link to the work's current chapter (chapter 1 if none is set). Chapter URLs need
 // AO3's chapter id; without it, fall back to the full-work page at that chapter.
-export function ao3ChapterUrl(w: Pick<Ao3Work, 'id' | 'chapterIds' | 'furthestChapter'>): string {
+export function ao3ChapterUrl(w: Pick<Work, 'id' | 'chapterIds' | 'furthestChapter'>): string {
   const n = Math.max(1, w.furthestChapter?.num ?? 1);
   const chapterId = w.chapterIds?.[n - 1];
   if (chapterId) return `${ao3WorkUrl(w.id)}/chapters/${chapterId}`;
@@ -128,12 +129,12 @@ export function looksRateLimited(html: string): boolean {
 // of series and external works are skipped. Listings show less than a work page, so
 // fields a blurb doesn't have are left out rather than set.
 export function parseAo3ListingPage(html: string): {
-  works: Ao3WorkInput[];
+  works: WorkInput[];
   hasNext: boolean;
   lastPage: number | null;
 } {
   const doc = new DOMParser().parseFromString(html, 'text/html');
-  const works = new Map<string, Ao3WorkInput>();
+  const works = new Map<string, WorkInput>();
   for (const blurb of doc.querySelectorAll('li.blurb')) {
     const titleLink = blurb.querySelector('h4.heading a[href^="/works/"]');
     const id = titleLink?.getAttribute('href')?.match(/^\/works\/(\d+)/)?.[1];
@@ -155,6 +156,7 @@ export function parseAo3ListingPage(html: string): {
     const dateField = !done ? 'updatedAt' : chaptersPosted > 1 ? 'completedAt' : 'publishedAt';
 
     works.set(id, {
+      platform: 'ao3',
       id,
       title: text(titleLink),
       author: authors.map(text).join(', ') || 'Anonymous',

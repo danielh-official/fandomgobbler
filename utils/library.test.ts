@@ -1,61 +1,58 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, expect, test } from 'vitest';
 import { db } from './db';
-import {
-  addAo3WorksIfMissing,
-  getAo3Work,
-  removeAo3Work,
-  removeAo3Works,
-  saveAo3Work,
-  setAo3Statuses,
-} from './library';
+import { addWorksIfMissing, getWork, removeWork, removeWorks, saveWork, setStatuses } from './library';
 
-const base = { id: '1', title: 'T', author: 'A', url: 'https://archiveofourown.org/works/1' };
+const base = { platform: 'ao3' as const, id: '1', title: 'T', author: 'A', url: 'https://archiveofourown.org/works/1' };
 
-beforeEach(() => db.ao3Works.clear());
+beforeEach(() => db.works.clear());
 
 test('new work gets defaults and timestamps', async () => {
-  const w = await saveAo3Work({ ...base, status: 'want' }, 100);
+  const w = await saveWork({ ...base, status: 'want' }, 100);
   expect(w).toMatchObject({ status: 'want', authorUrl: null, addedAt: 100, movedAt: 100 });
-  expect(await getAo3Work('1')).toEqual(w);
+  expect(await getWork({ platform: 'ao3', id: '1' })).toEqual(w);
 });
 
 test('movedAt changes only when status changes', async () => {
-  await saveAo3Work({ ...base, status: 'want' }, 100);
-  expect(await saveAo3Work({ ...base, notes: 'n' }, 200)).toMatchObject({ movedAt: 100, status: 'want' });
-  expect(await saveAo3Work({ ...base, status: 'progress' }, 300)).toMatchObject({ movedAt: 300, addedAt: 100 });
+  await saveWork({ ...base, status: 'want' }, 100);
+  expect(await saveWork({ ...base, notes: 'n' }, 200)).toMatchObject({ movedAt: 100, status: 'want' });
+  expect(await saveWork({ ...base, status: 'progress' }, 300)).toMatchObject({ movedAt: 300, addedAt: 100 });
 });
 
 test('finishedAt is stamped only on moving into completed', async () => {
-  await saveAo3Work({ ...base, status: 'progress' }, 100);
-  expect((await saveAo3Work({ ...base, status: 'completed' }, 200))?.finishedAt).toBe(200);
-  expect((await saveAo3Work({ ...base, notes: 'x' }, 300))?.finishedAt).toBe(200);
+  await saveWork({ ...base, status: 'progress' }, 100);
+  expect((await saveWork({ ...base, status: 'completed' }, 200))?.finishedAt).toBe(200);
+  expect((await saveWork({ ...base, notes: 'x' }, 300))?.finishedAt).toBe(200);
 });
 
 test('a work without a status is not saved', async () => {
-  expect(await saveAo3Work(base)).toBeNull();
-  expect(await db.ao3Works.count()).toBe(0);
+  expect(await saveWork(base)).toBeNull();
+  expect(await db.works.count()).toBe(0);
 });
 
-test('removeAo3Work', async () => {
-  await saveAo3Work({ ...base, status: 'want' });
-  await removeAo3Work('1');
-  expect(await db.ao3Works.count()).toBe(0);
+test('removeWork', async () => {
+  await saveWork({ ...base, status: 'want' });
+  await removeWork(base);
+  expect(await db.works.count()).toBe(0);
 });
 
 test('bulk status and remove', async () => {
-  await saveAo3Work({ ...base, id: '1', status: 'want' }, 100);
-  await saveAo3Work({ ...base, id: '2', status: 'completed' }, 100);
-  await setAo3Statuses(['1', '2', 'missing'], 'completed', 200);
-  expect(await getAo3Work('1')).toMatchObject({ status: 'completed', movedAt: 200, finishedAt: 200 });
-  expect(await getAo3Work('2')).toMatchObject({ movedAt: 100 });
-  expect(await getAo3Work('missing')).toBeNull();
-  await removeAo3Works(['1', '2']);
-  expect(await db.ao3Works.count()).toBe(0);
+  await saveWork({ ...base, id: '1', status: 'want' }, 100);
+  await saveWork({ ...base, id: '2', status: 'completed' }, 100);
+  await setStatuses(['ao3:1', 'ao3:2', 'ao3:missing'], 'completed', 200);
+  expect(await getWork({ platform: 'ao3', id: '1' })).toMatchObject({
+    status: 'completed',
+    movedAt: 200,
+    finishedAt: 200,
+  });
+  expect(await getWork({ platform: 'ao3', id: '2' })).toMatchObject({ movedAt: 100 });
+  expect(await getWork({ platform: 'ao3', id: 'missing' })).toBeNull();
+  await removeWorks(['ao3:1', 'ao3:2']);
+  expect(await db.works.count()).toBe(0);
 });
 
-test('addAo3WorksIfMissing adds new works and leaves existing ones untouched', async () => {
-  const mine = await saveAo3Work(
+test('addWorksIfMissing adds new works and leaves existing ones untouched', async () => {
+  const mine = await saveWork(
     { ...base, id: '1', status: 'progress', notes: 'mine', rating: 4, kudosCount: 5, furthestChapter: { num: 2 } },
     100,
   );
@@ -63,12 +60,17 @@ test('addAo3WorksIfMissing adds new works and leaves existing ones untouched', a
     { ...base, id: '1', title: 'Renamed on AO3', kudosCount: 999 },
     { ...base, id: '2', kudosCount: 7 },
   ];
-  expect(await addAo3WorksIfMissing(imported, 'want', 200)).toBe(1);
-  expect(await getAo3Work('1')).toEqual(mine);
-  expect(await getAo3Work('2')).toMatchObject({ status: 'want', addedAt: 200, movedAt: 200, kudosCount: 7 });
+  expect(await addWorksIfMissing(imported, 'want', 200)).toBe(1);
+  expect(await getWork({ platform: 'ao3', id: '1' })).toEqual(mine);
+  expect(await getWork({ platform: 'ao3', id: '2' })).toMatchObject({
+    status: 'want',
+    addedAt: 200,
+    movedAt: 200,
+    kudosCount: 7,
+  });
 
   // Running the same import again changes nothing.
-  const before = await db.ao3Works.toArray();
-  expect(await addAo3WorksIfMissing(imported, 'completed', 300)).toBe(0);
-  expect(await db.ao3Works.toArray()).toEqual(before);
+  const before = await db.works.toArray();
+  expect(await addWorksIfMissing(imported, 'completed', 300)).toBe(0);
+  expect(await db.works.toArray()).toEqual(before);
 });

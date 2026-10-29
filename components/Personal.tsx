@@ -1,28 +1,28 @@
 import { For, onCleanup, Show, untrack } from 'solid-js';
-import { saveAo3Work } from '@/utils/library';
-import type { Ao3Work } from '@/utils/models';
+import { saveWork } from '@/utils/library';
+import type { Work } from '@/utils/models';
 import { sectionHeading } from './ui';
 
 // Notes, rating and chapter progress. Only for tracked works: untracked ones aren't stored.
 // Render keyed on the work id: the notes field is uncontrolled so saves don't move the cursor.
-export function Personal(props: { work: Ao3Work }) {
+export function Personal(props: { work: Work }) {
   const w = () => props.work;
 
   let notesTimer: ReturnType<typeof setTimeout> | undefined;
   let pendingNotes: string | undefined;
   const flushNotes = () => {
     clearTimeout(notesTimer);
-    if (pendingNotes !== undefined) saveAo3Work({ ...w(), notes: pendingNotes });
+    if (pendingNotes !== undefined) saveWork({ ...w(), notes: pendingNotes });
     pendingNotes = undefined;
   };
   onCleanup(flushNotes);
 
-  const setRating = (n: number) => saveAo3Work({ ...w(), rating: w().rating === n ? undefined : n });
+  const setRating = (n: number) => saveWork({ ...w(), rating: w().rating === n ? undefined : n });
 
   const maxChapter = () => w().chaptersPosted ?? Infinity;
   const setChapter = (n: number) => {
     const num = Math.min(Math.max(0, Math.floor(n) || 0), maxChapter());
-    saveAo3Work({
+    saveWork({
       ...w(),
       furthestChapter: num ? { num, total: w().chaptersTotal ?? undefined } : undefined,
       lastChapterUnfinished: undefined,
@@ -58,7 +58,7 @@ export function Personal(props: { work: Ao3Work }) {
             <input
               type="checkbox"
               checked={!!w().lastChapterUnfinished}
-              onChange={(e) => saveAo3Work({ ...w(), lastChapterUnfinished: e.currentTarget.checked || undefined })}
+              onChange={(e) => saveWork({ ...w(), lastChapterUnfinished: e.currentTarget.checked || undefined })}
             />
             Not finished yet
             <span class="text-xs text-muted">(still counts as unread)</span>
