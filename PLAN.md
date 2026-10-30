@@ -84,7 +84,7 @@ Status: `todo` · `in progress` · `awaiting test` · `done` · `deferred` · `d
 | 11  | Extension theme: system, light, dark (done before M10)          | done     |
 | 12  | Multi-platform library + platform filter                        | done     |
 | 13  | FanFiction.net                                                  | done     |
-| 14  | Wattpad                                                         | todo     |
+| 14  | Wattpad                                                         | done     |
 
 ### 1. Scaffold
 
@@ -271,9 +271,18 @@ other platforms come first.
 
 ### 14. Wattpad
 
-- `wattpadWorks` table; story id from story and part URLs; parts as chapters.
-- Wattpad's pages are script-rendered; its JSON endpoints may be the reliable source
-  (undocumented, so checked live first).
+- `utils/wattpad.ts`. Wattpad pages are script-rendered, so works come from its JSON API
+  (`/api/v3/stories/<id>?fields=...`; undocumented, checked live 2026-10-29: no
+  Cloudflare check). Title, author, description, tags, parts (ids and word counts),
+  completion, votes/reads/comments, dates. No planned total; set once complete.
+- Reading pages are per part (`/<partId>-slug`): the page embeds its story as
+  `"group":{"id":...}`, and `/api/v3/story_parts/<partId>?fields=groupId` maps a pasted
+  part link (one request). Chapter links use the stored part ids.
+- Deleted: API error 1017 ("Story not found", status 400) or `deleted: true`.
+- Site registry gained `host`, `pageWorkId` and `lookupWorkId` for URLs that don't carry
+  the work id; the ✓ badge reads such tabs' HTML to find the work. The right-click menu
+  shows on all Wattpad pages (no match pattern singles out part pages); on other pages
+  adding fails with the "!" badge.
 
 ## Later (not scheduled)
 
@@ -344,3 +353,4 @@ other platforms come first.
 - 2026-10-29: M13 built: FanFiction.net parser, site registry (`utils/sites.ts`) with generic fetch, tab reading, refresh and paced fetch; right-click, ✓ badge, chapter links, paste-a-URL and background refresh work per platform. New host permission for www.fanfiction.net.
 - 2026-10-29: M13 test: Chrome withheld the new FanFiction.net host permission after the update ("Failed to fetch"). Added `components/SiteAccess.tsx`: side panel and dashboard show "No access to <platform>" with an Allow access button (`permissions.request`); pasted-URL network errors now say whether access is missing.
 - 2026-10-29: M13 done. Platform shown in the dashboard (list column, grid card) and side panel cards; paste fields read "Paste a work url" with a "Supported: ..." hint built from `PLATFORMS`.
+- 2026-10-29: M14 built: Wattpad via its JSON API, part pages resolved to their story from the page or one lookup. New host permission for www.wattpad.com.

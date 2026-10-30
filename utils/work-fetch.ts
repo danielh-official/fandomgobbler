@@ -2,7 +2,7 @@ import { browser } from 'wxt/browser';
 import { getWork, saveWork, type WorkInput } from './library';
 import type { WorkRef } from './models';
 import { PLATFORM_NAMES, PLATFORMS } from './platforms';
-import { SITES, workRefFromUrl } from './sites';
+import { SITES, workRefFromUrlOrLookup } from './sites';
 
 // One request for one work. Sites rate-limit scraping, so only call this on an explicit
 // user action (a pasted URL, AO3's adult-content fallback), never in a loop.
@@ -44,7 +44,7 @@ export async function parseOrFetchWork(html: unknown, ref: WorkRef): Promise<Wor
 
 // The work at a URL the user pasted: one fetch, refreshing it if it's tracked.
 export async function readWorkUrl(url: string): Promise<WorkInput> {
-  const ref = workRefFromUrl(url);
+  const ref = await workRefFromUrlOrLookup(url);
   if (!ref) throw new Error(`That isn’t a work URL from ${PLATFORM_NAMES}.`);
   const work = await fetchWork(ref);
   await refreshIfTracked(work);

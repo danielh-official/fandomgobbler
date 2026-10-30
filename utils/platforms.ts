@@ -3,6 +3,7 @@
 export const PLATFORMS = {
   ao3: { label: 'AO3', home: 'https://archiveofourown.org/' },
   ffnet: { label: 'FanFiction.net', home: 'https://www.fanfiction.net/' },
+  wattpad: { label: 'Wattpad', home: 'https://www.wattpad.com/' },
 } as const;
 
 export type Platform = keyof typeof PLATFORMS;

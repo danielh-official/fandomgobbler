@@ -49,7 +49,8 @@ export interface Work {
   chaptersPosted?: number | null;
   // null when the platform shows no planned total (AO3's "?").
   chaptersTotal?: number | null;
-  // AO3 only: chapter ids in reading order, from the chapter dropdown on a chapter page.
+  // Chapter ids in reading order, where chapter links need them: AO3 (from the chapter
+  // dropdown on a chapter page) and Wattpad (part ids).
   chapterIds?: string[];
   kudosCount?: number | null;
   bookmarksCount?: number | null;
@@ -66,6 +67,11 @@ export interface Work {
   reviewsCount?: number | null;
   favoritesCount?: number | null;
   followsCount?: number | null;
+  // Wattpad only.
+  tags?: string[];
+  votesCount?: number | null;
+  readsCount?: number | null;
+  commentsCount?: number | null;
   furthestChapter?: ChapterProgress;
   // Set by the user while on the last posted chapter without having finished it.
   // Cleared whenever the current chapter changes.

@@ -14,7 +14,7 @@ export default defineConfig({
     // parses work pages for the background script, which has no DOMParser.
     // alarms + storage: the background refresh schedule and its on/off setting.
     permissions: ['unlimitedStorage', 'scripting', 'contextMenus', 'offscreen', 'alarms', 'storage'],
-    host_permissions: ['https://archiveofourown.org/*', 'https://www.fanfiction.net/*'],
+    host_permissions: ['https://archiveofourown.org/*', 'https://www.fanfiction.net/*', 'https://www.wattpad.com/*'],
     action: {},
   },
 });

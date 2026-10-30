@@ -6,7 +6,8 @@ import { db } from '@/utils/db';
 import { PICKABLE_STATUSES, STATUS_LABELS, type Status } from '@/utils/models';
 import { isUnresponsiveStatus, isWaiting, recordFailure } from '@/utils/health';
 import { PLATFORM_IDS, PLATFORMS, type Platform } from '@/utils/platforms';
-import { SITES, workRefFromUrl } from '@/utils/sites';
+import { platformOfUrl, SITES, workRefFromPage, workRefFromUrl } from '@/utils/sites';
+import { readTabHtml } from '@/utils/tab';
 import { loadHealth, REFRESH_BATCH, REFRESH_EVERY_MIN, saveHealth } from '@/utils/refresh-settings';
 import type { AddWorkMessage, AddWorkResponse, RefreshDueMessage, RefreshDueResponse } from './offscreen/main';
 
@@ -35,7 +36,13 @@ async function ensureOffscreen() {
 }
 
 async function updateBadge(tabId: number, url: string | undefined) {
-  const ref = url ? workRefFromUrl(url) : null;
+  if (!url) return setTrackedBadge(tabId, false);
+  // Pages whose URL doesn't name the work (Wattpad parts) are read for it; reading a tab
+  // costs the site nothing.
+  const platform = platformOfUrl(url);
+  const ref =
+    workRefFromUrl(url) ??
+    (platform && SITES[platform].pageWorkId ? workRefFromPage(url, await readTabHtml(tabId).catch(() => null)) : null);
   await setTrackedBadge(tabId, !!ref && !!(await db.works.get([ref.platform, ref.id])));
 }
 

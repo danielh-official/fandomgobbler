@@ -1,6 +1,6 @@
 import { browser } from 'wxt/browser';
 import { refreshDueWorks, type RefreshProgress } from '@/utils/refresh';
-import { workRefFromUrl } from '@/utils/sites';
+import { workRefFromPage } from '@/utils/sites';
 import { parseOrFetchWork } from '@/utils/work-fetch';
 import { isUnresponsive } from '@/utils/health';
 import { saveWork } from '@/utils/library';
@@ -27,7 +27,7 @@ export interface RefreshDueMessage {
 export type RefreshDueResponse = RefreshProgress | { error: string; unresponsive: boolean };
 
 async function addWork(msg: AddWorkMessage): Promise<string> {
-  const ref = workRefFromUrl(msg.url);
+  const ref = workRefFromPage(msg.url, msg.html);
   if (!ref) throw new Error('Not a supported work page.');
   const work = await parseOrFetchWork(msg.html, ref);
   await saveWork({ ...work, status: msg.status });
