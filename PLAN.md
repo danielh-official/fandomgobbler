@@ -289,10 +289,10 @@ other platforms come first.
 - Sync solution (replacement for Google Sheets sync). Will need infrastructure.
 - Further platforms (user to choose; e.g. SpaceBattles/SufficientVelocity, Royal Road, Tumblr).
 - Firefox build (`wxt build -b firefox`).
-- Keyboard shortcut, context-menu "Track this work".
+- Keyboard shortcut for adding the current work (the right-click "Add to library" exists).
 - Custom categories. Built in M3, removed in M4 at the user's request. Dexie v2 dropped
-  the `ao3Categories` table and `customCats`; bringing them back means a v3 upgrade with
-  per-edition tables (`ao3Categories`), not one table shared across editions.
+  the `ao3Categories` table and `customCats`; bringing them back means a new Dexie
+  version with a `categories` table shared by all platforms (works are one table now).
 - "Set to this chapter" button in the work view when the active tab is on a chapter page
   (still a manual click, never automatic).
 - Dropped by the no-UI-on-AO3 rule, listed so they aren't forgotten: hidden rules (hiding
