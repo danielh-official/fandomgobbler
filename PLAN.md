@@ -85,6 +85,8 @@ Status: `todo` · `in progress` · `awaiting test` · `done` · `deferred` · `d
 | 12  | Multi-platform library + platform filter                        | done     |
 | 13  | FanFiction.net                                                  | done     |
 | 14  | Wattpad                                                         | done     |
+| 15  | Cloud backup, restorable/synced on other browsers and machines  | todo     |
+| 16  | One-way snapshot to a phone-friendly service (Sheets or Notion) | todo     |
 
 ### 1. Scaffold
 
@@ -284,17 +286,26 @@ other platforms come first.
   shows on all Wattpad pages (no match pattern singles out part pages); on other pages
   adding fails with the "!" badge.
 
+### 15. Cloud backup and sync
+
+- Back up the library to a third-party cloud service so it can be restored, and kept in
+  step, on other browsers and machines. Supersedes M5 (local export/import), which can
+  come along as a JSON file export.
+- Leaning (2026-10-29): Google Drive (free; hidden app folder, one Google sign-in shared
+  with M16), automatic sync merging per work (latest edit wins, removals carry over).
+- On hold: the user may build their own web app to take on both M15 and M16.
+
+### 16. One-way snapshot for the phone
+
+- Push a snapshot of the library to a service with a good phone app (Google Sheets or
+  Notion) to view, sort and filter there. One-way: edits there never come back.
+- Leaning: Google Sheets, one row per work, rewritten each sync. On hold with M15.
+
 ## Later (not scheduled)
 
-- Sync solution (replacement for Google Sheets sync). Will need infrastructure.
 - Further platforms (user to choose; e.g. SpaceBattles/SufficientVelocity, Royal Road, Tumblr).
 - Firefox build (`wxt build -b firefox`).
 - Keyboard shortcut for adding the current work (the right-click "Add to library" exists).
-- Custom categories. Built in M3, removed in M4 at the user's request. Dexie v2 dropped
-  the `ao3Categories` table and `customCats`; bringing them back means a new Dexie
-  version with a `categories` table shared by all platforms (works are one table now).
-- "Set to this chapter" button in the work view when the active tab is on a chapter page
-  (still a manual click, never automatic).
 - Dropped by the no-UI-on-AO3 rule, listed so they aren't forgotten: hidden rules (hiding
   works on listing pages), AO3 page theme toggle, floating sidebar.
 
@@ -354,3 +365,4 @@ other platforms come first.
 - 2026-10-29: M13 test: Chrome withheld the new FanFiction.net host permission after the update ("Failed to fetch"). Added `components/SiteAccess.tsx`: side panel and dashboard show "No access to <platform>" with an Allow access button (`permissions.request`); pasted-URL network errors now say whether access is missing.
 - 2026-10-29: M13 done. Platform shown in the dashboard (list column, grid card) and side panel cards; paste fields read "Paste a work url" with a "Supported: ..." hint built from `PLATFORMS`.
 - 2026-10-29: M14 built: Wattpad via its JSON API, part pages resolved to their story from the page or one lookup. New host permission for www.wattpad.com.
+- 2026-10-29: Dropped at the user's request: custom categories, "Set to this chapter" button. Imports stay AO3-only for now. New: M15 cloud backup/sync across browsers and machines, M16 one-way snapshot to Sheets or Notion for viewing on the phone.
